@@ -1,0 +1,13 @@
+/devpost/learner-profile.md
+.env
+.env.*
+!.env.example
+/.venv/
+__pycache__/
+*.py[cod]
+/.pytest_cache/
+/recordings/
+/output/
+/data/reference.json
+/src/*.egg-info/
+/models/
