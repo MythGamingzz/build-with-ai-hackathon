@@ -40,15 +40,15 @@ Build mode: learn
 
 ## Code Tour and App Map
 
-- [ ] Learning activity complete — connect the team's learning goal to one analysis step, its implementation, and verification evidence
-- [ ] Optional edit and transfer reflection addressed — offered/declined/already covered/not applicable as appropriate
+- [x] Learning activity complete — completed a guided source route from CLI entry point through comparison to the test that preserves raw predictions.
+- [x] Optional edit and transfer reflection addressed — edit was offered and skipped; optional transfer reflection answered.
 - [x] `devpost/app-map.html` generated from finished code, checked against the source, and shown, including a project-grounded practice to reuse
 
-Activity and evidence: Final review confirmed the report reflects the private reference, including the three E-major chord misses and the separate lyric correction. The tests verify comparisons and preserve raw predictions; a guided source tour is still offered below.
-Route and stops: Reference route prepared in `app-map.html`; not yet toured interactively.
-Edit outcome: Not yet offered.
-Reflection: Not yet offered.
-Activity mode: Final review completed; guided code tour pending.
+Activity and evidence: Guided source tour completed after final review. Connected the learner's goal of understanding how an agent-supported plan becomes a working prototype to the `main` → `compare_annotations` → `test_keeps_raw_predictions_separate_from_reference_report` path; no command was needed.
+Route and stops: `devpost/app-map.html`; `src/cadence/cli.py` `main`; `src/cadence/comparison.py` `compare_annotations`; `tests/test_cli.py` `test_keeps_raw_predictions_separate_from_reference_report`.
+Edit outcome: Learner skipped the optional report text edit; no code change was requested.
+Reflection: Answered; personal learning note saved in the ignored learner profile.
+Activity mode: Learn mode; final review, guided code tour, and app map completed.
 
 ## Revisions
 
