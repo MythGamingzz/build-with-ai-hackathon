@@ -49,7 +49,7 @@ The `faster-whisper` documentation describes local Whisper inference, model down
 - **Runtime:** Local Python command-line experiment on the learner's computer; the current CLI accepts nonempty WAV files only.
 - **Language hint:** `--language` optionally passes a language code to Whisper when automatic detection is incorrect; omitting it preserves automatic detection.
 - **Requirements:** Python version and supported audio formats depend on the selected candidate libraries; verify these before installing. A model download may require internet during setup. No API key or hosted inference.
-- **Try it:** Run `python analyze.py <recording.wav> --language id --output output` for Indonesian vocals (or omit `--language` for automatic detection); inspect the generated local analysis.
+- **Try it:** Run `python analyze.py <recording.wav> --language id --reference data/reference.json --output output` for Indonesian vocals and a local reference (or omit `--language` for automatic detection); inspect the generated analysis and report.
 - **Input:** Begin with a short WAV recording of the learner's piano-and-vocal performance; expand formats only if needed.
 - **Privacy:** Do not upload audio to a service. Keep the recording, transcript, reference, and report local and out of the public repository.
 

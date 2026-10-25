@@ -7,6 +7,7 @@ from typing import Sequence
 import wave
 
 from cadence.chords import estimate_chords
+from cadence.comparison import build_report_html, compare_annotations, load_reference
 from cadence.transcription import transcribe_words
 
 
@@ -46,6 +47,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--language",
         help="Optional language code for sung words; omit to let the model detect it",
     )
+    parser.add_argument(
+        "--reference",
+        type=Path,
+        help="Optional local JSON reference for comparison and an HTML report",
+    )
     return parser
 
 
@@ -63,6 +69,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         with wave.open(str(args.recording), "rb") as audio_file:
             duration = audio_file.getnframes() / audio_file.getframerate()
+        reference = (
+            load_reference(args.reference, args.recording.name, duration)
+            if args.reference
+            else None
+        )
         lyrics, detected_language = transcribe_words(
             args.recording, language=args.language
         )
@@ -81,13 +92,22 @@ def main(argv: Sequence[str] | None = None) -> int:
             "chords": chords,
             "warnings": [] if lyrics else ["No sung words were recognized."],
         }
+        report = (
+            build_report_html(result, reference, compare_annotations(result, reference))
+            if reference
+            else None
+        )
         output_file.write_text(
             json.dumps(result, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
         )
+        if report is not None:
+            (args.output / "report.html").write_text(report, encoding="utf-8")
     except (OSError, ValueError, wave.Error) as error:
         print(f"error: analysis failed: {error}", file=sys.stderr)
         return 1
 
     print(f"Analysis saved to {output_file}")
+    if args.reference:
+        print(f"Comparison report saved to {args.output / 'report.html'}")
     return 0

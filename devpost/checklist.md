@@ -9,7 +9,7 @@ Build mode: learn
 
 ## Slices
 
-- [ ] **1. A recording yields timed lyric and chord estimates**
+- [x] **1. A recording yields timed lyric and chord estimates**
   Becomes usable: A local Python command analyzes one private piano-and-vocal recording and writes estimated sung words and chord changes with timestamps to a structured output file.
   Why now: Bootstrapping is part of the first usable step, and this tests the two central risks—recognizing singing and estimating chords from a mixed recording—before investing in a larger product.
   PRD ref: `prd.md > The Core Journey`; `prd.md > Features and Behavior > Local Recording Analysis`; `prd.md > Features and Behavior > Sung Words and Chord Estimates`
@@ -19,7 +19,7 @@ Build mode: learn
   Learner check: Review the generated words and chord intervals alongside your reference. Point out one place the tool got right and one place it missed or was uncertain.
   Commit: `Analyze private piano-vocal recording`
 
-- [ ] **2. You can inspect estimates against your reference**
+- [x] **2. You can inspect estimates against your reference**
   Becomes usable: A generated local report places the estimated words and chord changes alongside the hand-checked reference on a shared timeline and summarizes mismatches.
   Why now: Raw machine output is hard to judge; a comparison report makes the experiment's accuracy and limitations visible without treating predictions as verified truth.
   PRD ref: `prd.md > The Core Journey`; `prd.md > Features and Behavior > Sung Words and Chord Estimates`
@@ -31,8 +31,8 @@ Build mode: learn
 
 ## Hands-on Checkpoints
 
-- [ ] Early usable behavior explored — after Slice 1, inspect the estimated words/chords against your reference and report how well the analysis works on your recording.
-- [ ] Final kick-the-tires exploration and feedback completed — after Slice 2, inspect the full report, try awkward or unclear regions, and report anything confusing or worth changing.
+- [x] Early usable behavior explored — the learner confirmed the opening B–E–B–E and identified chord and word errors for the reference.
+- [x] Final kick-the-tires exploration and feedback completed — learner reviewed the private report and confirmed the corrected reference comparisons are right.
 
 ## Final Review
 

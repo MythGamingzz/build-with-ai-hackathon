@@ -42,6 +42,7 @@ Source: `scope.md > The Core Loop`, `The POC Boundary`.
 - [ ] The musician can run the analysis on the specified local recording.
 - [ ] An unsupported, missing, or unreadable file produces a clear error and does not silently return success-shaped output.
 - [ ] The tool does not fetch audio from a URL or transmit the recording to a remote service.
+- [ ] A malformed reference or one for a different recording produces a clear error before analysis begins.
 
 ### Sung Words and Chord Estimates
 
