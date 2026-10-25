@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Cadence — App Map</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, "Segoe UI", sans-serif;
+      color: #172033;
+      background: #f5f7fb;
+    }
+    body {
+      box-sizing: border-box;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+      line-height: 1.6;
+    }
+    h1, h2 { line-height: 1.2; color: #101828; }
+    h1 { margin-bottom: .25rem; }
+    a { color: #175cd3; }
+    code, pre { font-family: Consolas, "Cascadia Code", monospace; }
+    code { overflow-wrap: anywhere; }
+    .subtle { color: #475467; }
+    .notice {
+      border-left: 4px solid #175cd3;
+      background: #eef4ff;
+      padding: .75rem 1rem;
+    }
+    .diagram {
+      background: white;
+      border: 1px solid #d0d5dd;
+      border-radius: .75rem;
+      margin: 1rem 0 1.5rem;
+      padding: .75rem;
+    }
+    .route, .pointers {
+      padding-left: 1.35rem;
+    }
+    li { margin: .55rem 0; }
+    pre {
+      background: #101828;
+      border-radius: .5rem;
+      color: #f9fafb;
+      overflow-x: auto;
+      padding: 1rem;
+    }
+    footer {
+      border-top: 1px solid #d0d5dd;
+      margin-top: 2rem;
+      padding-top: 1rem;
+    }
+    @media (max-width: 600px) {
+      body { padding: 1.25rem .8rem 2rem; }
+      .diagram { padding: .25rem; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Cadence — App Map</h1>
+    <p class="subtle">A private, local experiment for comparing estimated sung words and chords with a hand-checked reference.</p>
+  </header>
+
+  <p class="notice"><strong>Privacy:</strong> recordings, transcript, reference annotations, and generated reports can contain private or copyrighted material. Keep them local and out of public commits. This guide contains no sample recording or transcript.</p>
+
+  <main>
+    <section aria-labelledby="overview">
+      <h2 id="overview">How the pieces fit</h2>
+      <p>The command-line entry point checks the recording and optional reference, calls the local transcription and chord estimators, then saves predictions. When a reference is supplied, comparison results are rendered into a separate HTML report; the reference never replaces the predictions.</p>
+      <div class="diagram">
+        <svg viewBox="0 0 880 240" role="img" aria-labelledby="flow-title flow-description" width="100%" height="240">
+          <title id="flow-title">Cadence local analysis flow</title>
+          <desc id="flow-description">A local WAV and optional reference flow through the command line and local estimators, then produce analysis JSON and a separate comparison report.</desc>
+          <defs>
+            <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+              <path d="M0,0 L8,4 L0,8 Z" fill="#475467"></path>
+            </marker>
+          </defs>
+          <g fill="#eef4ff" stroke="#175cd3" stroke-width="2">
+            <rect x="16" y="68" width="160" height="84" rx="12"></rect>
+            <rect x="238" y="68" width="180" height="84" rx="12"></rect>
+            <rect x="480" y="20" width="180" height="84" rx="12"></rect>
+            <rect x="480" y="136" width="180" height="84" rx="12"></rect>
+            <rect x="716" y="68" width="150" height="84" rx="12"></rect>
+          </g>
+          <g fill="#172033" font-family="system-ui, sans-serif" font-size="15" text-anchor="middle">
+            <text x="96" y="101"><tspan x="96">Local WAV</tspan><tspan x="96" dy="22">+ optional reference</tspan></text>
+            <text x="328" y="101"><tspan x="328">CLI</tspan><tspan x="328" dy="22">validate and dispatch</tspan></text>
+            <text x="570" y="53"><tspan x="570">Local estimators</tspan><tspan x="570" dy="22">words + chords</tspan></text>
+            <text x="570" y="169"><tspan x="570">Reference compare</tspan><tspan x="570" dy="22">match / mismatch</tspan></text>
+            <text x="791" y="101"><tspan x="791">Local files</tspan><tspan x="791" dy="22">JSON + HTML</tspan></text>
+          </g>
+          <g fill="none" stroke="#475467" stroke-width="2" marker-end="url(#arrow)">
+            <path d="M176 110 H230"></path>
+            <path d="M418 88 H472"></path>
+            <path d="M418 132 H472"></path>
+            <path d="M660 62 H708"></path>
+            <path d="M660 178 C690 178 690 130 708 130"></path>
+          </g>
+        </svg>
+      </div>
+    </section>
+
+    <section aria-labelledby="route">
+      <h2 id="route">Reference route: follow one report run</h2>
+      <p>This route is prepared for a source tour; it is not a record that someone has already completed the tour.</p>
+      <ol class="route">
+        <li><a href="../src/cadence/cli.py#L58"><code>src/cadence/cli.py</code> — <code>main</code></a>: accepts the WAV and options, checks the input, then invokes local transcription and chord estimation. With <code>--reference</code>, it loads the annotations before running analysis.</li>
+        <li><a href="../src/cadence/comparison.py#L24"><code>src/cadence/comparison.py</code> — <code>load_reference</code>, <code>compare_annotations</code>, and <code>build_report_html</code></a>: validates reference timing, compares each labeled window with the raw estimate, and renders separate estimate/reference rows.</li>
+        <li><a href="../tests/test_cli.py#L44"><code>tests/test_cli.py</code> — <code>test_keeps_raw_predictions_separate_from_reference_report</code></a>: verifies a mismatch is visible in the report while the saved prediction stays unchanged. <code>tests/test_comparison.py</code> also checks matching/mismatching chord spans.</li>
+      </ol>
+    </section>
+
+    <section aria-labelledby="change">
+      <h2 id="change">To change this, start here</h2>
+      <ul class="pointers">
+        <li>Change which command options are accepted or how local files are written: <code>src/cadence/cli.py</code>, starting at <code>build_parser</code> and <code>main</code>.</li>
+        <li>Change annotation validation, span matching, or the match threshold: <code>src/cadence/comparison.py</code>, starting at <code>load_reference</code> and <code>compare_annotations</code>.</li>
+        <li>Change report labels or presentation: <code>src/cadence/comparison.py</code>, starting at <code>build_report_html</code>.</li>
+        <li>Change chord feature estimation: <code>src/cadence/chords.py</code>, starting at <code>estimate_chords</code>. Keep the known chord limitations visible in tests and comparisons.</li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="practice">
+      <h2 id="practice">A practice to reuse</h2>
+      <p>Keep an estimate separate from the hand-checked answer. Here, the reference comparison exposes the chord misses without silently correcting model output; <code>tests/test_cli.py</code> verifies that separation. In another project, store an independent expected result and test the observable difference instead of changing generated output to look correct.</p>
+    </section>
+
+    <section aria-labelledby="run">
+      <h2 id="run">Run it again</h2>
+      <p>From the project folder, run the local command with a recording and your own private reference:</p>
+      <pre><code>.\.venv\Scripts\python.exe analyze.py &lt;recording.wav&gt; --language id --reference &lt;private-reference.json&gt; --output &lt;private-output-folder&gt;</code></pre>
+      <p>The generated JSON and HTML report go to the selected output folder. Do not use real private paths or annotations in a public issue or commit.</p>
+    </section>
+  </main>
+
+  <footer>
+    <p class="subtle">Source snapshot: commit <code>6b4e0bd</code>. This map describes that implementation and may drift as the code changes. Open <code>devpost/app-map.html</code> from the project explorer to revisit it offline.</p>
+  </footer>
+</body>
+</html>

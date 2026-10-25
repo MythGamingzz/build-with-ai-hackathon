@@ -36,19 +36,19 @@ Build mode: learn
 
 ## Final Review
 
-- [ ] Final review complete — feedback resolved and learner confirms the experiment is ready to share
+- [x] Final review complete — feedback resolved; learner confirms the private local experiment is ready as a prototype. This does not authorize public sharing of the recording or analysis.
 
 ## Code Tour and App Map
 
 - [ ] Learning activity complete — connect the team's learning goal to one analysis step, its implementation, and verification evidence
 - [ ] Optional edit and transfer reflection addressed — offered/declined/already covered/not applicable as appropriate
-- [ ] `devpost/app-map.html` generated from finished code, checked, and shown, including a project-grounded practice to reuse
+- [x] `devpost/app-map.html` generated from finished code, checked against the source, and shown, including a project-grounded practice to reuse
 
-Activity and evidence: Not started.
-Route and stops: Not started.
-Edit outcome: Not started.
-Reflection: Not started.
-Activity mode: Not started.
+Activity and evidence: Final review confirmed the report reflects the private reference, including the three E-major chord misses and the separate lyric correction. The tests verify comparisons and preserve raw predictions; a guided source tour is still offered below.
+Route and stops: Reference route prepared in `app-map.html`; not yet toured interactively.
+Edit outcome: Not yet offered.
+Reflection: Not yet offered.
+Activity mode: Final review completed; guided code tour pending.
 
 ## Revisions
 
@@ -62,3 +62,4 @@ Activity mode: Not started.
 - The learner confirmed the opening 0.0–1.1 seconds should have no chord, while the following B–E–B–E sequence is correct. Inspection found digital silence at the start, but chroma-template noise still yielded G#m/A#m; added a relative RMS energy gate to label low-energy frames `N` and retest the opening.
 - The learner identified additional false positives: 11.56–12.09s should remain E; 14.16–15.67s and 19.89–20.89s should be E major, not the estimated C#m/A#m/G#m labels. The learner also corrected one recognized word at 29.76–32.52s. Keep these corrections in the private reference, not in model predictions; the report should make the baseline's melody-versus-harmony limitation visible.
 - The recording is a private learner-provided performance, not an original composition. Keep its audio, transcript, reference, and report local; do not use them in a public demo or submission.
+- Final review: learner confirmed the private local experiment is ready as a prototype after reviewing its report. Public sharing of the recording and its analysis remains out of scope.
