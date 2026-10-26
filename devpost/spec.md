@@ -67,7 +67,7 @@ The older `faster-whisper` lyric experiment and its CLI remain separate from the
 - **Demo path:** Show the training command and output first; then show the app using the saved model, explore a progression lesson, analyze an authorized local song, correct metadata/sections, update and review the preview, then export the PDF.
 - **Audio input:** Support full-song WAV and MP3 if the installed local decoder can read them. Verify MP3 support early. If decoding fails, show a clear supported-format error and do not show fabricated results.
 - **Privacy and rights:** The learner confirmed the original training songs and performances may be public. Include only those five approved originals and their annotations; do not include the earlier copyrighted cover or private analysis artifacts. Visitor audio is processed locally, held in a temporary file only as needed, and removed after analysis unless the visitor explicitly confirms rights and saves corrected intervals. Opt-in audio and annotations remain under ignored `output/training-feedback/` and are never committed or uploaded.
-- **Hackathon submission:** A short demo video and public GitHub repository are required. Deployment is optional; a local app is sufficient for the recording.
+- **Hackathon submission:** A short demo video and public GitHub repository are required. Repository: https://github.com/MythGamingzz/build-with-ai-hackathon. Deployment is optional; a local app is sufficient for the recording.
 
 ## Look and Feel
 
