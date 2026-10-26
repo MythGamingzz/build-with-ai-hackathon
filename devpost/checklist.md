@@ -9,7 +9,7 @@ Build mode: fast
 
 ## Slices
 
-- [ ] **1. Train and evaluate a chord model**
+- [x] **1. Train and evaluate a chord model**
   Becomes usable: The project owner can run one local command that trains a chord-label model from four original songs, compares it with the existing template analyzer on a fifth song held out in full, reports measured accuracy and macro-F1 with limitations, and saves a model the app can load.
   Why now: This is the highest-risk part of the distinctive model experiment. Proving the data, training, and honest evaluation path first gives the rest of the build a real saved model to use rather than a placeholder.
   PRD ref: `prd.md > The Core Journey`; `prd.md > Training and evaluating the chord model`; `prd.md > States and Boundaries`
