@@ -145,17 +145,17 @@ Source: `scope.md > The Core Loop`, `What "Working" Looks Like`, `The POC Bounda
 Source: `scope.md > The Core Loop`, `What "Working" Looks Like`, `The POC Boundary`.
 
 - From the song-analysis result, the visitor can export a printable PDF chart.
-- Before export, show a bar-and-beat table preview grouped by the visitor's sections. An explicit **Update chart preview** action applies edited section ranges and recalculates bar placement and section-specific progression matches; do not present stale preview data as current.
+- Before export, show a direct bar-lines preview grouped by the visitor's sections, for example `| B . . . | F# . . . | E . D#m . |`. Put the bar number above each measure, show chord names at their estimated beat positions, use dots for empty beats, and do not put beat numbers beside chord names. An explicit **Update chart preview** action applies edited section ranges and recalculates bar placement and section-specific progression matches; do not present stale preview data as current.
 - Highlight the chord cells that form a unique section progression match and provide a link to that lesson. Do not highlight a weak, ambiguous, or unmatched sequence.
 - Enable PDF download from the latest successfully updated preview. If the visitor changes chart inputs after previewing, ask them to update the preview before downloading.
-- The PDF includes the user-supplied song title, key, time signature, song section labels, numbered bars, and estimated chord placements across beats. Beat positions can be shown as dots.
+- The PDF includes the user-supplied song title, key, time signature, song section labels, numbered bars, and estimated chord placements in the same direct bar-lines format. Keep bar numbers separate from chord names, with dots marking empty beats.
 - Use corrected key, tempo, and time-signature values in the chart. Include tempo with the chart metadata because it determines bar alignment.
 - Keep chord estimates visibly identified as estimates in the PDF, so the chart is not mistaken for verified sheet music.
 - Arrange longer songs across as many readable pages as needed; the PDF is for performance reference, not formal notation.
 
 **Acceptance criteria**
 - [ ] A visitor can create and open or download a PDF from an analyzed song.
-- [ ] The on-screen chart preview groups numbered bars and beat positions under the manually entered section ranges.
+- [ ] The on-screen chart preview groups numbered, pipe-delimited bars under the manually entered section ranges, places chord names on estimated beats, and uses dots for empty beats without adding beat numbers beside chords.
 - [ ] Clicking **Update chart preview** after editing metadata or sections recalculates the preview and per-section progression highlights; stale preview data is not presented as current.
 - [ ] A unique progression match is highlighted in the relevant section and opens its lesson; ambiguous/no matches remain unlinked.
 - [ ] PDF download uses the latest updated preview and is not offered while the preview is stale or invalid.

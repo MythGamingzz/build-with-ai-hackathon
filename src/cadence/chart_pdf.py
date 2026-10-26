@@ -6,76 +6,81 @@ from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import landscape, letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
+from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.platypus import (
+    Flowable,
+    LayoutError,
     Paragraph,
     SimpleDocTemplate,
     Spacer,
-    Table,
-    TableStyle,
 )
 
-from cadence.chart_data import ChartBar, ChartData, ChartGroup
+from cadence.chart_data import ChartBar, ChartData, ChartGroup, bar_beat_slots
 
 _MATCH_FILL = colors.HexColor("#f5dfad")
-_HEADER_FILL = colors.HexColor("#e9e2d5")
 
 
-def _beat_cell(bar: ChartBar, beat_slot: int) -> tuple[str, bool]:
-    chords = [
-        chord
-        for chord in bar.chords
-        if int(chord.beat) == beat_slot
-    ]
-    lines = [
-        f"{chord.beat:g}: {escape(chord.label)}"
-        for chord in chords
-    ]
-    return "<br/>".join(lines), any(chord.highlighted for chord in chords)
+class _MeasureRow(Flowable):
+    def __init__(self, bars: tuple[ChartBar, ...], beats_per_bar: int) -> None:
+        super().__init__()
+        self.bars = bars
+        self.beats_per_bar = beats_per_bar
+        self.height = 36
 
+    def wrap(
+        self,
+        available_width: float,
+        available_height: float,
+    ) -> tuple[float, float]:
+        self.width = available_width
+        return self.width, self.height
 
-def _group_table(
-    data: ChartData,
-    group: ChartGroup,
-    cell_style: ParagraphStyle,
-) -> Table:
-    headers = ["Bar"] + [f"Beat {beat}" for beat in range(1, data.beats_per_bar + 1)]
-    rows = [[Paragraph(header, cell_style) for header in headers]]
-    highlighted_cells: list[tuple[int, int]] = []
-    for row_index, bar in enumerate(group.bars, start=1):
-        row = [Paragraph(str(bar.number), cell_style)]
-        for beat_slot in range(1, data.beats_per_bar + 1):
-            text, highlighted = _beat_cell(bar, beat_slot)
-            row.append(Paragraph(text, cell_style))
-            if highlighted:
-                highlighted_cells.append((beat_slot, row_index))
+    def draw(self) -> None:
+        canvas = self.canv
+        measure_width = self.width / len(self.bars)
+        for bar_index, bar in enumerate(self.bars):
+            x = bar_index * measure_width
+            canvas.setFillColor(colors.HexColor("#8b642e"))
+            canvas.setFont("Helvetica", 7)
+            canvas.drawString(x + 2, 25, f"Bar {bar.number}")
+            canvas.setFillColor(colors.black)
+            canvas.setFont("Courier", 8)
+            canvas.drawString(x + 2, 8, "|")
+            canvas.drawRightString(x + measure_width - 2, 8, "|")
 
-        rows.append(row)
-
-    page_width = landscape(letter)[0] - 0.8 * inch
-    bar_width = 0.5 * inch
-    beat_width = (page_width - bar_width) / data.beats_per_bar
-    table = Table(
-        rows,
-        colWidths=[bar_width] + [beat_width] * data.beats_per_bar,
-        repeatRows=1,
-        hAlign="LEFT",
-    )
-    commands = [
-        ("BACKGROUND", (0, 0), (-1, 0), _HEADER_FILL),
-        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#756d60")),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("ALIGN", (0, 0), (0, -1), "CENTER"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 5),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
-        ("TOPPADDING", (0, 0), (-1, -1), 6),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-    ]
-    commands.extend(
-        ("BACKGROUND", (column, row), (column, row), _MATCH_FILL)
-        for column, row in highlighted_cells
-    )
-    table.setStyle(TableStyle(commands))
-    return table
+            slot_left = x + 13
+            slot_width = (measure_width - 26) / self.beats_per_bar
+            for slot_index, slot in enumerate(
+                bar_beat_slots(bar, self.beats_per_bar)
+            ):
+                unique_labels: dict[str, bool] = {}
+                for chord in slot:
+                    unique_labels[chord.label] = unique_labels.get(
+                        chord.label, False
+                    ) or chord.highlighted
+                label = "/".join(unique_labels) if unique_labels else "."
+                highlighted = any(unique_labels.values())
+                font_size = 8.0
+                label_width = stringWidth(label, "Courier", font_size)
+                while label_width > slot_width - 2 and font_size > 5.5:
+                    font_size -= 0.5
+                    label_width = stringWidth(label, "Courier", font_size)
+                label_x = slot_left + slot_index * slot_width
+                center_x = label_x + slot_width / 2
+                if highlighted:
+                    canvas.setFillColor(_MATCH_FILL)
+                    canvas.roundRect(
+                        center_x - label_width / 2 - 2,
+                        5,
+                        label_width + 4,
+                        13,
+                        2,
+                        stroke=0,
+                        fill=1,
+                    )
+                canvas.setFillColor(colors.black)
+                canvas.setFont("Courier", font_size)
+                canvas.drawCentredString(center_x, 8, label)
 
 
 def create_chart_pdf(data: ChartData) -> bytes:
@@ -108,10 +113,8 @@ def create_chart_pdf(data: ChartData) -> bytes:
         leading=10,
     )
     cell_style = ParagraphStyle(
-        "ChartCell",
+        "ChartMetadata",
         parent=body_style,
-        fontSize=8,
-        leading=10,
         alignment=TA_CENTER,
     )
     document = SimpleDocTemplate(
@@ -132,12 +135,12 @@ def create_chart_pdf(data: ChartData) -> bytes:
             f"Key: {escape(data.key)} &nbsp;&nbsp; "
             f"Tempo: {data.tempo_bpm:g} BPM &nbsp;&nbsp; "
             f"Time signature: {escape(data.time_signature)}",
-            body_style,
+            cell_style,
         ),
         Paragraph(
             "Chord placements are experimental estimates, not verified sheet music. "
             "Confirm all chords and timing before performance.",
-            body_style,
+            cell_style,
         ),
         Spacer(1, 8),
     ]
@@ -154,10 +157,17 @@ def create_chart_pdf(data: ChartData) -> bytes:
                 )
             )
             story.append(Spacer(1, 4))
-        story.append(_group_table(data, group, cell_style))
-        story.append(Spacer(1, 8))
+        for row_start in range(0, len(group.bars), 4):
+            story.append(
+                _MeasureRow(
+                    group.bars[row_start : row_start + 4],
+                    data.beats_per_bar,
+                )
+            )
+            story.append(Spacer(1, 4))
+        story.append(Spacer(1, 5))
     try:
         document.build(story)
-    except (OSError, TypeError, UnicodeEncodeError, ValueError) as exc:
+    except (LayoutError, OSError, TypeError, UnicodeEncodeError, ValueError) as exc:
         raise RuntimeError(f"Could not create the performance chart PDF: {exc}") from exc
     return buffer.getvalue()

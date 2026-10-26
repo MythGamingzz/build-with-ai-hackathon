@@ -13,7 +13,9 @@ from cadence.chart_data import (
     ChartDataError,
     ChartGroup,
     SectionRange,
+    bar_beat_slots,
     build_chart_data,
+    format_bar_measure,
 )
 from cadence.chart_pdf import create_chart_pdf
 from cadence.progression_data import (
@@ -215,36 +217,44 @@ def _apply_styles() -> None:
         .frequency-badge.frequent { color: #8fd3a8; }
         .frequency-badge.medium { color: #f0ce76; }
         .frequency-badge.less-common { color: #f28b82; }
-        .chart-preview {
-            border-collapse: collapse;
+        .chart-measure-row {
+            align-items: flex-start;
             color: #f3e7cf;
-            font-size: 0.85rem;
-            width: 100%;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.8rem 1.1rem;
+            margin: 0.5rem 0 1rem;
         }
-        .chart-preview th, .chart-preview td {
-            border: 1px solid #74664e;
-            min-width: 5rem;
-            padding: 0.4rem;
-            text-align: center;
-            vertical-align: middle;
+        .chart-measure {
+            min-width: 10rem;
         }
-        .chart-preview th {
-            background: #302c25;
-            color: #f3e7cf;
+        .chart-measure-number {
+            color: #d9a85f;
+            font-size: 0.75rem;
+            margin: 0 0 0.2rem 0.2rem;
         }
-        .chart-preview .chart-match {
+        .chart-measure-content {
+            align-items: center;
+            border-left: 2px solid #d9a85f;
+            border-right: 2px solid #d9a85f;
+            display: flex;
+            font-family: monospace;
+            justify-content: space-around;
+            min-height: 2.1rem;
+            padding: 0.1rem 0.35rem;
+            white-space: nowrap;
+        }
+        .chart-measure-content .chart-match {
             background: #d9a85f;
             border-radius: 0.3rem;
             color: #211f1b;
             display: inline-block;
             font-weight: 700;
-            margin: 0.1rem;
-            padding: 0.1rem 0.25rem;
+            padding: 0.1rem 0.2rem;
         }
-        .chart-preview .chart-chord {
+        .chart-measure-content .chart-chord {
             display: inline-block;
-            margin: 0.1rem;
-            padding: 0.1rem 0.25rem;
+            padding: 0.1rem 0.2rem;
         }
         .stButton > button {
             border-color: #bd8640;
@@ -751,36 +761,45 @@ def _render_chart_group(
             f"{', '.join(group.match.candidate_names)}. No lesson link is selected."
         )
 
-    headers = ["Bar"] + [
-        f"Beat {beat}" for beat in range(1, chart.beats_per_bar + 1)
-    ]
-    rows = []
-    for bar in group.bars:
-        cells = [f"<td><strong>{bar.number}</strong></td>"]
-        for beat_slot in range(1, chart.beats_per_bar + 1):
-            chords = [
-                chord for chord in bar.chords if int(chord.beat) == beat_slot
-            ]
-            labels = "".join(
-                (
-                    '<span class="chart-match">'
-                    if chord.highlighted and show_lesson_link
-                    else '<span class="chart-chord">'
+    for row_start in range(0, len(group.bars), 4):
+        row_html = []
+        for bar in group.bars[row_start : row_start + 4]:
+            beat_slots = bar_beat_slots(bar, chart.beats_per_bar)
+            beat_html = []
+            for slot in beat_slots:
+                if not slot:
+                    beat_html.append('<span class="chart-chord">.</span>')
+                    continue
+                labels: dict[str, bool] = {}
+                for chord in slot:
+                    labels[chord.label] = labels.get(chord.label, False) or (
+                        chord.highlighted and show_lesson_link
+                    )
+                beat_html.append(
+                    " / ".join(
+                        (
+                            '<span class="chart-match">'
+                            if highlighted
+                            else '<span class="chart-chord">'
+                        )
+                        + f"{escape(label)}</span>"
+                        for label, highlighted in labels.items()
+                    )
                 )
-                + f"{chord.beat:g}: {escape(chord.label)}</span>"
-                for chord in chords
+            row_html.append(
+                '<div class="chart-measure" '
+                f'aria-label="{escape(format_bar_measure(bar, chart.beats_per_bar))}">'
+                f'<div class="chart-measure-number">Bar {bar.number}</div>'
+                '<div class="chart-measure-content">| '
+                + " ".join(beat_html)
+                + " |</div></div>"
             )
-            cells.append(f"<td>{labels}</td>")
-        rows.append("<tr>" + "".join(cells) + "</tr>")
-    header_html = "".join(f"<th>{escape(header)}</th>" for header in headers)
-    st.markdown(
-        '<table class="chart-preview"><thead><tr>'
-        + header_html
-        + "</tr></thead><tbody>"
-        + "".join(rows)
-        + "</tbody></table>",
-        unsafe_allow_html=True,
-    )
+        st.markdown(
+            '<div class="chart-measure-row">'
+            + "".join(row_html)
+            + "</div>",
+            unsafe_allow_html=True,
+        )
 
 
 def _render_chart_preview(result: SongAnalysis, progressions: tuple[Progression, ...]) -> None:

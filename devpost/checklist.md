@@ -44,9 +44,9 @@ Build mode: fast
   Why now: The PDF depends on stable analysis, corrected metadata, and manually entered sections. Building it last avoids polishing a chart before its inputs and bar/beat alignment are verified.
   PRD ref: `prd.md > The Core Journey`; `prd.md > Exporting a performance chart`; `prd.md > States and Boundaries`
   Spec ref: `spec.md > Look and Feel`; `spec.md > Components > Song Metadata and Bar/Beat Alignment`; `spec.md > Components > Key-Independent Pattern Matching`; `spec.md > Components > Chart Data and Section Preview`; `spec.md > Components > Performance Chart PDF`; `spec.md > Components > Tests`; `spec.md > Important Failure Modes`
-  Build: Build one validated chart-data model from corrected metadata and section ranges; show its section-grouped bar/beat preview; require **Update chart preview** after edits to refresh bar assignments and section-specific progression highlights/lesson links; generate an in-memory multi-page PDF from that same updated data; preserve the preview if PDF generation fails.
+  Build: Build one validated chart-data model from corrected metadata and section ranges; show its section-grouped, pipe-delimited bar preview with dots for empty beats and separate bar numbers; require **Update chart preview** after edits to refresh bar assignments and section-specific progression highlights/lesson links; generate an in-memory multi-page PDF in the same bar format from that updated data; preserve the preview if PDF generation fails.
   Verify (mechanical): Run `.venv\Scripts\python.exe -m unittest discover -s tests`; test section grouping, beat positions, overlap/invalid-range errors, unique/ambiguous/no-match highlights, and stale-preview gating; verify PDF bytes, fields, multi-page layout, and export-error handling. Run the local demo through preview update and PDF download.
-  Learner check: Analyze an authorized recording, enter a title, correct metadata, add distinct section ranges, click **Update chart preview**, and inspect bars/beats plus any section-specific lesson links. Change a section, confirm the preview is marked stale, update it, then download and inspect the PDF disclaimer and print layout.
+  Learner check: Analyze an authorized recording, enter a title, correct metadata, add distinct section ranges, click **Update chart preview**, and inspect the bar lines, chord placements, dots, and any section-specific lesson links. Change a section, confirm the preview is marked stale, update it, then download and inspect the same bar format, PDF disclaimer, and print layout.
   Commit: `Export printable chord chart PDF`
 
 ## Hands-on Checkpoints
@@ -57,6 +57,7 @@ Build mode: fast
 
 ## Final Review
 
+- [ ] Replace the chart table with direct pipe-delimited bars, keep bar numbers separate from chord names, and use dots for empty beats; verify that the preview and PDF use the same notation.
 - [ ] Final review complete — feedback resolved and learner confirms the prototype is ready to share using only rights-cleared demo audio
 
 ## Code Tour and App Map
@@ -82,3 +83,4 @@ Activity mode: Not started.
 - Applied matching temporal smoothing, short-run merging, and low-energy masking to both methods before scoring. After reviewing the low held-out result and training-only cross-validation, the learner chose to continue with the honest experiment rather than require a 75% target; do not claim the trained model outperforms the baseline.
 - Slice 3 hands-on review — the learner liked the analyzer and requested a section-aware bar-format preview, highlighted lesson links for matched progressions, an explicit update action after section edits, and PDF download after preview; carry these refinements into Slice 4.
 - Refined Slice 4 from hands-on feedback — use one section-aware chart model for a refreshable bar/beat preview, per-section progression highlights and lesson links, and the downloadable PDF; prevent stale previews from being exported.
+- Final review feedback — replace the table preview with pipe-delimited bar notation, use dots for empty beats, and remove beat numbers beside chord names; keep measure numbers in a separate label above each bar.

@@ -51,6 +51,33 @@ class ChartData:
     groups: tuple[ChartGroup, ...]
 
 
+def bar_beat_slots(
+    bar: ChartBar,
+    beats_per_bar: int,
+) -> tuple[tuple[ChartChord, ...], ...]:
+    if isinstance(beats_per_bar, bool) or not isinstance(beats_per_bar, int):
+        raise ValueError("Beats per bar must be a positive whole number.")
+    if beats_per_bar < 1:
+        raise ValueError("Beats per bar must be a positive whole number.")
+    slots: list[list[ChartChord]] = [[] for _ in range(beats_per_bar)]
+    for chord in bar.chords:
+        slot = min(
+            beats_per_bar,
+            max(1, math.floor(chord.beat + 0.5)),
+        )
+        slots[slot - 1].append(chord)
+    return tuple(tuple(slot) for slot in slots)
+
+
+def format_bar_measure(bar: ChartBar, beats_per_bar: int) -> str:
+    slots = bar_beat_slots(bar, beats_per_bar)
+    labels = [
+        "/".join(dict.fromkeys(chord.label for chord in slot)) if slot else "."
+        for slot in slots
+    ]
+    return f"| {' '.join(labels)} |"
+
+
 def total_bar_count(duration: float, tempo_bpm: float, time_signature: str) -> int:
     if not math.isfinite(duration) or duration <= 0:
         raise ChartDataError("Song duration must be a positive finite number.")

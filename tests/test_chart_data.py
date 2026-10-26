@@ -6,6 +6,7 @@ from cadence.chart_data import (
     ChartDataError,
     SectionRange,
     build_chart_data,
+    format_bar_measure,
 )
 from cadence.progression_data import load_progressions
 from cadence.theory import spell_progression
@@ -125,6 +126,22 @@ class ChartDataTests(unittest.TestCase):
 
         self.assertEqual([group.name for group in chart.groups], ["Unsectioned"])
         self.assertEqual([bar.number for bar in chart.groups[0].bars], [1, 2, 3, 4])
+
+    def test_measure_format_shows_chords_and_dots_without_beat_numbers(self) -> None:
+        chart = self._build(
+            duration=2.0,
+            events=(
+                ChordEvent(0.0, 0.5, "B", 0.8),
+                ChordEvent(1.0, 2.0, "D#m", 0.8),
+            ),
+            sections=(SectionRange("Verse", 1, 1),),
+        )
+
+        measure = format_bar_measure(chart.groups[0].bars[0], 4)
+
+        self.assertEqual(measure, "| B . D#m . |")
+        self.assertNotIn("1:", measure)
+        self.assertNotIn("3:", measure)
 
     def test_rejects_overlapping_section_ranges(self) -> None:
         with self.assertRaisesRegex(ChartDataError, "overlaps"):

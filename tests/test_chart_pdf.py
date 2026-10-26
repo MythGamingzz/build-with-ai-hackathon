@@ -31,7 +31,9 @@ class ChartPdfTests(unittest.TestCase):
         self.assertIn(b"A practice chart", pdf_bytes)
         self.assertIn(b"D major", pdf_bytes)
         self.assertIn(b"experimental estimates", pdf_bytes)
-        self.assertIn(b"Beat 1", pdf_bytes)
+        self.assertIn(b"Bar 1", pdf_bytes)
+        self.assertNotIn(b"Beat 1", pdf_bytes)
+        self.assertNotIn(b"1: D", pdf_bytes)
 
     def test_long_charts_flow_across_multiple_pages(self) -> None:
         pdf_bytes = create_chart_pdf(self._chart(100))
