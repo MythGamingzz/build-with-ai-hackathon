@@ -58,29 +58,18 @@ class _MeasureRow(Flowable):
                     include_no_chord=True,
                 )
             ):
-                unique_labels: dict[str, tuple[bool, bool]] = {}
+                unique_labels: dict[str, bool] = {}
                 for chord in slot:
                     if chord.label == "N":
                         continue
-                    previous = unique_labels.get(chord.label, (False, False))
                     unique_labels[chord.label] = (
-                        previous[0] or chord.highlighted,
-                        previous[1] or chord.is_user_corrected,
+                        unique_labels.get(chord.label, False) or chord.highlighted
                     )
                 if unique_labels:
-                    label = "/".join(
-                        f"{chord_label}{'*' if corrected else ''}"
-                        for chord_label, (_, corrected) in unique_labels.items()
-                    )
+                    label = "/".join(unique_labels)
                 else:
-                    corrected_no_chord = any(
-                        chord.label == "N" and chord.is_user_corrected
-                        for chord in slot
-                    )
-                    label = ".*" if corrected_no_chord else "."
-                highlighted = any(
-                    highlight for highlight, _ in unique_labels.values()
-                )
+                    label = "."
+                highlighted = any(unique_labels.values())
                 font_size = 8.0
                 label_width = stringWidth(label, "Courier", font_size)
                 while label_width > slot_width - 2 and font_size > 5.5:
@@ -186,19 +175,6 @@ def create_chart_pdf(data: ChartData) -> bytes:
         ),
         Spacer(1, 8),
     ]
-    if any(
-        chord.is_user_corrected
-        for group in data.groups
-        for bar in group.bars
-        for chord in bar.chords
-    ):
-        story.insert(
-            4,
-            Paragraph(
-                "* marks a user-corrected chord label; unmarked labels are model estimates.",
-                cell_style,
-            ),
-        )
     for group in data.groups:
         story.append(Paragraph(escape(group.name), section_style))
         if group.match is not None and group.match.progression is not None:

@@ -42,7 +42,7 @@ class ChartPdfTests(unittest.TestCase):
 
         self.assertGreater(page_count, 1)
 
-    def test_corrected_labels_are_marked_in_the_printed_chart(self) -> None:
+    def test_corrected_labels_are_not_marked_in_the_printed_chart(self) -> None:
         chart = build_chart_data(
             title="Corrected chart",
             key="C major",
@@ -57,8 +57,9 @@ class ChartPdfTests(unittest.TestCase):
 
         pdf_bytes = create_chart_pdf(chart)
 
-        self.assertIn(b"G*", pdf_bytes)
-        self.assertIn(b"* marks a user-corrected chord label", pdf_bytes)
+        self.assertIn(b"G", pdf_bytes)
+        self.assertNotIn(b"G*", pdf_bytes)
+        self.assertNotIn(b"* marks a user-corrected chord label", pdf_bytes)
 
     def test_fixed_chart_origin_is_explained_after_beat_edits(self) -> None:
         chart = build_chart_data(

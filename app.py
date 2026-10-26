@@ -182,6 +182,8 @@ def _initialize_state() -> None:
         "analysis_chart_signature": None,
         "analysis_chart_layout_signature": None,
         "analysis_edit_mode": False,
+        "analysis_chart_undo_available": False,
+        "analysis_scroll_to_feedback": False,
         "analysis_beat_cell_values": {},
         "analysis_feedback_original_events": (),
         "analysis_feedback_corrected_events": (),
@@ -687,6 +689,8 @@ def _set_analysis_result(
     st.session_state.analysis_result = result
     st.session_state.analysis_file_hash = hashlib.sha256(audio_bytes).hexdigest()
     st.session_state.analysis_edit_mode = False
+    st.session_state.analysis_chart_undo_available = False
+    st.session_state.analysis_scroll_to_feedback = False
     st.session_state.analysis_beat_cell_values = {}
     st.session_state.analysis_feedback_original_events = ()
     st.session_state.analysis_feedback_corrected_events = ()
@@ -878,16 +882,13 @@ def _matched_chord_html(
     label: str,
     progression: Progression,
     key: str,
-    is_user_corrected: bool = False,
 ) -> str:
     lesson_link = f"?lesson={quote(progression.id, safe='')}"
     match_details = (
         f"{progression.name} ({progression.pattern}) in {key}"
     )
-    display_label = f"{label}*" if is_user_corrected else label
     accessible_label = (
-        f"{display_label}, "
-        f"{'user-corrected; ' if is_user_corrected else ''}"
+        f"{label}, "
         f"possible match {match_details}, open progression lesson"
     )
     return (
@@ -895,9 +896,8 @@ def _matched_chord_html(
         f'aria-label="{escape(accessible_label)}">'
         f'<a class="chart-match-link" href="{lesson_link}" '
         f'aria-label="{escape(accessible_label)}">'
-        f'<span class="chart-match">{escape(display_label)}</span></a>'
+        f'<span class="chart-match">{escape(label)}</span></a>'
         '<span class="chart-tooltip" role="tooltip">'
-        f"{'<strong>User-corrected chord.</strong><br/>' if is_user_corrected else ''}"
         f"<strong>{escape(match_details)}</strong><br/>"
         f'<a href="{lesson_link}">Open progression lesson</a>'
         "</span></span>"
@@ -992,25 +992,16 @@ def _render_chart_group(
                 if not slot:
                     beat_html.append('<span class="chart-chord">.</span>')
                     continue
-                labels: dict[str, tuple[bool, bool]] = {}
+                labels: dict[str, bool] = {}
                 for chord in slot:
                     if chord.label == "N":
                         continue
-                    previous = labels.get(chord.label, (False, False))
-                    labels[chord.label] = (
-                        previous[0] or (chord.highlighted and show_lesson_link),
-                        previous[1] or chord.is_user_corrected,
+                    previous = labels.get(chord.label, False)
+                    labels[chord.label] = previous or (
+                        chord.highlighted and show_lesson_link
                     )
                 if not labels:
-                    corrected_no_chord = any(
-                        chord.label == "N" and chord.is_user_corrected
-                        for chord in slot
-                    )
-                    beat_html.append(
-                        '<span class="chart-chord">'
-                        + ("·*" if corrected_no_chord else ".")
-                        + "</span>"
-                    )
+                    beat_html.append('<span class="chart-chord">.</span>')
                     continue
                 progression = (
                     group.match.progression
@@ -1018,22 +1009,18 @@ def _render_chart_group(
                     else None
                 )
                 rendered_labels = []
-                for label, (highlighted, is_user_corrected) in labels.items():
+                for label, highlighted in labels.items():
                     if highlighted and progression is not None and show_lesson_link:
                         rendered_labels.append(
                             _matched_chord_html(
                                 label,
                                 progression,
                                 group.match.key or "",
-                                is_user_corrected,
                             )
                         )
                     else:
-                        display_label = (
-                            f"{label}*" if is_user_corrected else label
-                        )
                         rendered_labels.append(
-                            f'<span class="chart-chord">{escape(display_label)}</span>'
+                            f'<span class="chart-chord">{escape(label)}</span>'
                         )
                 beat_html.append(
                     " / ".join(rendered_labels)
@@ -1101,6 +1088,27 @@ def _update_chart_preview(
     st.session_state.analysis_feedback_corrected_events = (
         beat_edits.corrected_feedback_events
     )
+    st.session_state.analysis_chart_undo_available = (
+        beat_edits.changed_cell_count > 0
+    )
+    return True
+
+
+def _undo_chart_edits(
+    result: SongAnalysis,
+    progressions: tuple[Progression, ...],
+) -> bool:
+    previous_values = st.session_state.analysis_beat_cell_values
+    st.session_state.analysis_beat_cell_values = {}
+    if not _update_chart_preview(result, progressions):
+        st.session_state.analysis_beat_cell_values = previous_values
+        return False
+    st.session_state.analysis_edit_mode = False
+    st.session_state.analysis_chart_undo_available = False
+    st.session_state.analysis_feedback_original_events = ()
+    st.session_state.analysis_feedback_corrected_events = ()
+    st.session_state.analysis_feedback_rights_confirmed = False
+    st.session_state.analysis_scroll_to_feedback = False
     return True
 
 
@@ -1148,16 +1156,6 @@ def _render_chart_preview(result: SongAnalysis, progressions: tuple[Progression,
             "beats are editable too. A change is placed at that beat's start. "
             "Click **Done editing** to apply valid changes to the preview."
         )
-    has_corrected_chords = any(
-        chord.is_user_corrected
-        for group in preview.groups
-        for bar in group.bars
-        for chord in bar.chords
-    )
-    if has_corrected_chords:
-        st.caption(
-            "An asterisk marks a user-corrected chord label; untouched labels remain estimates."
-        )
     st.caption(
         f"{escape(preview.key)} · {preview.tempo_bpm:g} BPM · "
         f"{escape(preview.time_signature)}"
@@ -1197,6 +1195,9 @@ def _render_chart_preview(result: SongAnalysis, progressions: tuple[Progression,
                 if st.session_state.analysis_edit_mode:
                     if _update_chart_preview(result, progressions):
                         st.session_state.analysis_edit_mode = False
+                        st.session_state.analysis_scroll_to_feedback = bool(
+                            st.session_state.analysis_feedback_corrected_events
+                        )
                         st.rerun()
                 else:
                     st.session_state.analysis_edit_mode = True
@@ -1354,10 +1355,12 @@ def _render_song_analysis(
         st.info("No chord spans were produced for this recording.")
 
     _render_chart_preview(result, progressions)
-    _render_training_feedback(uploaded_file)
+    _render_training_feedback(result, progressions, uploaded_file)
 
 
 def _render_training_feedback(
+    result: SongAnalysis,
+    progressions: tuple[Progression, ...],
     uploaded_file: UploadedFile,
 ) -> None:
     original_events = st.session_state.analysis_feedback_original_events
@@ -1365,6 +1368,46 @@ def _render_training_feedback(
     changed_count = len(corrected_events)
     if not changed_count:
         return
+
+    scroll_to_feedback = st.session_state.analysis_scroll_to_feedback
+    scroll_markup = '<div id="cadence-training-feedback"></div>'
+    if scroll_to_feedback:
+        scroll_markup += (
+            "<script>"
+            "requestAnimationFrame(() => {"
+            "document.getElementById('cadence-training-feedback')"
+            "?.scrollIntoView({behavior: 'smooth', block: 'start'});"
+            "});"
+            "</script>"
+        )
+        st.session_state.analysis_scroll_to_feedback = False
+    st.html(
+        scroll_markup,
+        unsafe_allow_javascript=scroll_to_feedback,
+    )
+
+    if (
+        st.session_state.analysis_chart_undo_available
+        and not st.session_state.analysis_feedback_id
+    ):
+        notice_column, undo_column = st.columns((4, 1))
+        with notice_column:
+            st.success(
+                f"{changed_count} chord change"
+                f"{'' if changed_count == 1 else 's'} applied."
+            )
+        with undo_column:
+            if st.button(
+                "Undo all changes",
+                key="undo_chart_edits",
+            ):
+                if _undo_chart_edits(result, progressions):
+                    st.rerun()
+    elif st.session_state.analysis_feedback_id:
+        st.info(
+            "Chord changes are applied. Their saved training example is separate "
+            "from the chart and is not removed by Undo."
+        )
 
     st.subheader("Save corrections for a future training run")
     st.write(
