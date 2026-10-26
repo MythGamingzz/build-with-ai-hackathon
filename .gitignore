@@ -10,4 +10,5 @@ __pycache__/
 /output/
 /data/reference.json
 /src/*.egg-info/
-/models/
+/models/*
+!/models/chord_classifier.joblib

@@ -1,13 +1,14 @@
 from pathlib import Path
 
-import librosa
 import numpy as np
 from scipy.ndimage import uniform_filter1d
 from numpy.typing import NDArray
 
-SAMPLE_RATE = 22050
-HOP_LENGTH = 512
-CHROMA_AVERAGE_FRAMES = 21
+from cadence.audio_features import (
+    HOP_LENGTH,
+    load_audio_features,
+)
+
 LABEL_SMOOTHING_FRAMES = 21
 MIN_CHORD_SECONDS = 0.4
 MIN_RELATIVE_RMS = 0.001
@@ -157,34 +158,17 @@ def chord_events(
 
 
 def estimate_chords(audio_path: Path) -> list[dict[str, float | str]]:
-    audio, sample_rate = librosa.load(audio_path, sr=SAMPLE_RATE, mono=True)
-    if audio.size == 0:
-        raise ValueError("The audio file contains no samples.")
-
-    chroma = librosa.feature.chroma_cqt(
-        y=audio,
-        sr=sample_rate,
-        hop_length=HOP_LENGTH,
-    )
-    chroma = uniform_filter1d(
-        chroma,
-        size=CHROMA_AVERAGE_FRAMES,
-        axis=1,
-        mode="nearest",
-    )
-    rms = librosa.feature.rms(
-        y=audio,
-        frame_length=2048,
-        hop_length=HOP_LENGTH,
-    )[0]
+    features = load_audio_features(audio_path)
+    chroma = features.chroma
+    rms = features.rms
     labels, scores = classify_chroma(chroma)
     labels = smooth_labels(labels, LABEL_SMOOTHING_FRAMES)
-    minimum_frames = round(MIN_CHORD_SECONDS * sample_rate / HOP_LENGTH)
+    minimum_frames = round(MIN_CHORD_SECONDS * features.sample_rate / HOP_LENGTH)
     labels = merge_short_runs(labels, minimum_frames)
     labels = mask_low_energy_frames(labels, rms)
     return chord_events(
         labels,
         scores,
-        frame_seconds=HOP_LENGTH / sample_rate,
-        duration=len(audio) / sample_rate,
+        frame_seconds=HOP_LENGTH / features.sample_rate,
+        duration=features.duration,
     )

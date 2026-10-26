@@ -1,0 +1,9 @@
+{
+  "training_song_ids": [
+    "demo_1",
+    "demo_2",
+    "demo_4",
+    "demo_5"
+  ],
+  "held_out_song_id": "demo_3"
+}

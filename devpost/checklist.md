@@ -5,61 +5,76 @@ status: approved
 
 # Build Checklist
 
-Build mode: learn
+Build mode: fast
 
 ## Slices
 
-- [x] **1. A recording yields timed lyric and chord estimates**
-  Becomes usable: A local Python command analyzes one private piano-and-vocal recording and writes estimated sung words and chord changes with timestamps to a structured output file.
-  Why now: Bootstrapping is part of the first usable step, and this tests the two central risks—recognizing singing and estimating chords from a mixed recording—before investing in a larger product.
-  PRD ref: `prd.md > The Core Journey`; `prd.md > Features and Behavior > Local Recording Analysis`; `prd.md > Features and Behavior > Sung Words and Chord Estimates`
-  Spec ref: `spec.md > Stack`; `spec.md > Where It Runs and How Someone Tries It`; `spec.md > Components > Sung-Word Recognition`; `spec.md > Components > Chord Estimation`; `spec.md > File Structure`
-  Build: Bootstrap the Python CLI; confirm the selected Whisper model card's MIT license and local runtime requirements; use faster-whisper for word-timed sung-word estimates and librosa chroma features with a major/minor triad-template baseline for chord estimates. Allow an optional language hint when auto-detection is wrong. Analyze the learner's PCM WAV recording and write timestamped JSON predictions locally. Keep the hand-checked reference out of model input and use it only for later evaluation.
-  Verify (mechanical): Run `python -m unittest discover -s tests` and `python analyze.py <recording.wav> --language id --output output` when Indonesian is sung; confirm `output/analysis.json` contains timed word and chord predictions, then compare them with the separately supplied reference and record observed misses. Do not claim general accuracy from this sample.
-  Learner check: Review the generated words and chord intervals alongside your reference. Point out one place the tool got right and one place it missed or was uncertain.
-  Commit: `Analyze private piano-vocal recording`
+- [ ] **1. Train and evaluate a chord model**
+  Becomes usable: The project owner can run one local command that trains a chord-label model from four original songs, compares it with the existing template analyzer on a fifth song held out in full, reports measured accuracy and macro-F1 with limitations, and saves a model the app can load.
+  Why now: This is the highest-risk part of the distinctive model experiment. Proving the data, training, and honest evaluation path first gives the rest of the build a real saved model to use rather than a placeholder.
+  PRD ref: `prd.md > The Core Journey`; `prd.md > Training and evaluating the chord model`; `prd.md > States and Boundaries`
+  Spec ref: `spec.md > Stack`; `spec.md > Where It Runs and How Someone Tries It`; `spec.md > Components > Shared Audio Features and Existing Baseline`; `spec.md > Components > Training and Held-Out Evaluation`; `spec.md > Components > Tests`; `spec.md > Data Model`; `spec.md > File Structure`; `spec.md > Important Failure Modes`
+  Build: Use the five learner-owned original recordings and their chord references (not the earlier copyrighted cover); keep Demo 5 in training because it is the only source of Daug/Eaug, and hold Demo 3 out as a complete song. Check file sizes, audio decoding, annotation coverage, interval validity, and supported chord labels. Simplify seventh/sixth chords to same-root major/minor triads, ignore slash-chord bass inversions, and preserve Daug/Eaug as their own labels. Add the training dependencies, timed-annotation validation, shared chroma features, song-level split, logistic-regression training, same-frame baseline comparison, clear metrics/limitations, and saved `models/chord_classifier.joblib`. Report that Daug/Eaug are represented by one song and cannot be evaluated on an independent held-out song. Do not save a success-shaped model when the inputs are invalid.
+  Verify (mechanical): Run `.venv\Scripts\python.exe -m unittest discover -s tests` and `.venv\Scripts\python.exe -m cadence.training`; confirm split tests keep songs separate, chart-label normalization preserves Daug/Eaug while simplifying extensions/inversions, the command prints both methods' measured accuracy and macro-F1 plus unsupported-label limits, the report discloses that augmented labels have no held-out evaluation, and the saved artifact loads successfully. MP3 decoding has been verified for all five supplied recordings.
+  Learner check: Provide the five original tracks and chord references, review the timed labels and held-out song assignment, run the training command, and check that its output clearly shows what it learned and how the held-out comparison turned out.
+  Commit: `Train and evaluate chord classifier`
 
-- [x] **2. You can inspect estimates against your reference**
-  Becomes usable: A generated local report places the estimated words and chord changes alongside the hand-checked reference on a shared timeline and summarizes mismatches.
-  Why now: Raw machine output is hard to judge; a comparison report makes the experiment's accuracy and limitations visible without treating predictions as verified truth.
-  PRD ref: `prd.md > The Core Journey`; `prd.md > Features and Behavior > Sung Words and Chord Estimates`
-  Spec ref: `spec.md > Components > Reference Comparison and Report`; `spec.md > Data Model`; `spec.md > Important Failure Modes`
-  Build: Add a reference-annotation format, time-alignment/comparison logic, and a readable report that clearly distinguishes predictions from reference data.
-  Verify (mechanical): Run `python -m unittest discover -s tests` and `python analyze.py <recording.wav> --reference data/reference.json --output output`; verify comparison results against a hand-checked fixture with known matching and mismatching words/chord intervals, then generate and inspect the report for the learner's recording.
-  Learner check: Open the report, follow one lyric/chord region on the timeline, and tell me whether it makes the model's success and mistakes easy to understand.
-  Commit: `Compare analysis with verified reference`
+- [ ] **2. Explore and learn from a progression**
+  Becomes usable: A visitor can open the local browser app, take or skip the beginner primer, search and filter the curated progression databank, open a lesson with theory and chord spellings in all 12 keys, and play its original synthetic audio example.
+  Why now: The databank is Cadence's educational core. Once the model-training risk is proven, this is the first complete visitor-facing experience and creates the lesson catalog that song estimates can later link to.
+  PRD ref: `prd.md > The Core Journey`; `prd.md > Experience choice and beginner tutorial`; `prd.md > Searching and browsing the progression databank`; `prd.md > Understanding and hearing a progression`; `prd.md > Look and Feel`
+  Spec ref: `spec.md > Stack`; `spec.md > Where It Runs and How Someone Tries It`; `spec.md > Look and Feel`; `spec.md > Components > Streamlit App and Experience Choice`; `spec.md > Components > Beginner Scale Tutorial`; `spec.md > Components > Progression Data and Databank`; `spec.md > Components > Scale and Key Theory`; `spec.md > Components > Progression Lesson and Diagrams`; `spec.md > Components > Synthetic Audio Examples`; `spec.md > Data Model`; `spec.md > File Structure`
+  Build: Add the Streamlit app within the existing Python project; implement experience choice, the optional major-scale tutorial, curated diatonic progression content, search and frequency filters, lesson explanations/diagrams, chord spellings across all keys, and locally generated synthetic WAV examples. Keep frequency groups identified as curated guidance and preserve the existing private CLI experiment.
+  Verify (mechanical): Run `.venv\Scripts\python.exe -m unittest discover -s tests`; start `.venv\Scripts\python.exe -m streamlit run app.py` and confirm it responds at `http://localhost:8501`; verify tests for diatonic chord qualities/spellings, progression data, and valid generated WAV audio.
+  Learner check: Open the app, choose beginner, take or skip the primer, search for I–vi–ii–V, filter its frequency group, open the lesson, compare its explanation and chord spellings in different keys, and play the example. Tell me what feels clear or confusing.
+  Commit: `Build searchable progression learning databank`
+
+- [ ] **3. Analyze a local song and review its estimates**
+  Becomes usable: A visitor can select an authorized local WAV or MP3, see chord predictions from the saved model alongside uncertain key, tempo, and meter suggestions, correct those details, enter a title and section ranges, and open only a plausible progression lesson match.
+  Why now: The model and lesson catalog now exist, so this connects the training experiment to the educational kernel. It also tests local audio decoding and the uncertain metadata path before PDF layout depends on it.
+  PRD ref: `prd.md > The Core Journey`; `prd.md > Analyzing a local song`; `prd.md > States and Boundaries`
+  Spec ref: `spec.md > Where It Runs and How Someone Tries It`; `spec.md > Components > Shared Audio Features and Existing Baseline`; `spec.md > Components > Pre-Trained Chord Inference`; `spec.md > Components > Song Metadata and Bar/Beat Alignment`; `spec.md > Components > Key-Independent Pattern Matching`; `spec.md > Components > Tests`; `spec.md > Important Failure Modes`
+  Build: Load only the project's trusted saved model; process selected local audio temporarily; show experimental chord events and estimated key/tempo/time signature with correction controls; let the visitor enter a title and edit section names/bar ranges; align chord events to confirmed bars/beats; match plausible progression patterns in all 12 major keys without forcing a weak match. Explain unsupported files, missing models, and decoding failures; clean up temporary audio.
+  Verify (mechanical): Run `.venv\Scripts\python.exe -m unittest discover -s tests`; test model loading and chord-event timing, metadata estimates and corrections, bar alignment, known/ambiguous/no-match patterns, malformed/unsupported files, and temporary-file cleanup. Run the app with an authorized local recording and confirm errors do not produce fabricated results.
+  Learner check: Analyze an original or otherwise authorized local recording, inspect the uncertainty notices, correct the suggested key/tempo/meter, add a title and section labels, and check that a lesson opens only for a plausible match.
+  Commit: `Add local song chord analysis`
+
+- [ ] **4. Export a printable performance chart**
+  Becomes usable: A visitor can preview and download a readable PDF containing the song title, corrected key/tempo/time signature, section labels, numbered bars, beat markers, and estimated chord placements, with a clear estimate disclaimer.
+  Why now: The PDF depends on stable analysis, corrected metadata, and manually entered sections. Building it last avoids polishing a chart before its inputs and bar/beat alignment are verified.
+  PRD ref: `prd.md > The Core Journey`; `prd.md > Exporting a performance chart`; `prd.md > States and Boundaries`
+  Spec ref: `spec.md > Look and Feel`; `spec.md > Components > Song Metadata and Bar/Beat Alignment`; `spec.md > Components > Performance Chart PDF`; `spec.md > Components > Tests`; `spec.md > Important Failure Modes`
+  Build: Add an in-memory ReportLab PDF generator and Streamlit preview/download flow. Use the visitor-corrected metadata and section ranges; lay out chord symbols by bar and beat across readable pages; retain the estimate warning and preserve valid on-screen analysis if PDF generation fails.
+  Verify (mechanical): Run `.venv\Scripts\python.exe -m unittest discover -s tests`; verify generated bytes have a valid PDF header, include the requested chart fields, handle a multi-page chart, and report export errors without discarding valid analysis. Run the full local demo path through PDF download.
+  Learner check: Export a chart for an authorized analyzed song, check its title and corrected musical details, then inspect bar numbers, beat dots, sections, chord placements, print readability, and the estimate disclaimer.
+  Commit: `Export printable chord chart PDF`
 
 ## Hands-on Checkpoints
 
-- [x] Early usable behavior explored — the learner confirmed the opening B–E–B–E and identified chord and word errors for the reference.
-- [x] Final kick-the-tires exploration and feedback completed — learner reviewed the private report and confirmed the corrected reference comparisons are right.
+- [ ] Early usable behavior explored — after Slice 2, try the tutorial, search/filter, lesson, all-key chord spellings, and synthetic audio; report what is clear or confusing while the analysis and chart work can still benefit from feedback.
+- [ ] Core journey explored — after Slice 3, run the trained-model analysis flow, correct estimates, add sections, and report any confusing parts before PDF export is finalized.
+- [ ] Final kick-the-tires exploration and feedback completed — after Slice 4, explore the complete demo, try an awkward search and an uncertain/no-match result, export a chart, and report anything broken or worth changing.
 
 ## Final Review
 
-- [x] Final review complete — feedback resolved; learner confirms the private local experiment is ready as a prototype. This does not authorize public sharing of the recording or analysis.
+- [ ] Final review complete — feedback resolved and learner confirms the prototype is ready to share using only rights-cleared demo audio
 
 ## Code Tour and App Map
 
-- [x] Learning activity complete — completed a guided source route from CLI entry point through comparison to the test that preserves raw predictions.
-- [x] Optional edit and transfer reflection addressed — edit was offered and skipped; optional transfer reflection answered.
-- [x] `devpost/app-map.html` generated from finished code, checked against the source, and shown, including a project-grounded practice to reuse
+- [ ] Learning activity complete — connect the team's learning goal to one product behavior, its implementation, and verification evidence
+- [ ] Optional edit and transfer reflection addressed — offered/declined/already covered/not applicable as appropriate
+- [ ] `devpost/app-map.html` regenerated from finished code, checked, and shown, including a project-grounded practice to reuse
 
-Activity and evidence: Guided source tour completed after final review. Connected the learner's goal of understanding how an agent-supported plan becomes a working prototype to the `main` → `compare_annotations` → `test_keeps_raw_predictions_separate_from_reference_report` path; no command was needed.
-Route and stops: `devpost/app-map.html`; `src/cadence/cli.py` `main`; `src/cadence/comparison.py` `compare_annotations`; `tests/test_cli.py` `test_keeps_raw_predictions_separate_from_reference_report`.
-Edit outcome: Learner skipped the optional report text edit; no code change was requested.
-Reflection: Answered; personal learning note saved in the ignored learner profile.
-Activity mode: Learn mode; final review, guided code tour, and app map completed.
+Activity and evidence: Not started.
+Route and stops: Not started.
+Edit outcome: Not started.
+Reflection: Not started.
+Activity mode: Not started.
 
 ## Revisions
 
-- Replaced the prepared-song Vite website build with a local Python feasibility experiment for the learner's piano-and-vocal recording; the learner chose automatic sung-word transcription, piano accompaniment, Python, and existing analysis tools. Comparison against a hand-checked reference is included; training and broader accuracy claims are deferred.
-- Narrowed the first local tool candidates to faster-whisper for speech recognition and librosa chroma features for a transparent chord baseline after checking their project licenses; the selected faster-whisper model card lists MIT. Results on singing and the learner's recording remain to be verified. The chord baseline is signal processing, not a trained chord AI model.
-- The CLI accepts nonempty WAV files and writes `analysis.json` inside the `--output` directory; align the learner instructions with those actual interfaces.
-- The installed PyAV 19.0.2 rejected a decoder keyword used by faster-whisper 1.2.1; constrain PyAV to `<19` and verify local decoding.
-- The first real recording run auto-detected the wrong language and produced 887 short chord intervals. Added an optional language hint after the learner identified Indonesian; chord stability still needs evaluation against their reference before this slice can pass.
-- The attached chord chart includes add9 and minor-7 qualities that the current major/minor triad templates cannot express, and it has no timestamps. The first output had 634 of 887 intervals shorter than 0.25 seconds, so it is not a reliable chord result yet.
-- Added temporal chroma averaging, longer label smoothing, and a 0.4-second minimum chord run after the unstable real-recording result. The chord output fell from 887 to 183 intervals, with 16 shorter than 0.4 seconds; a synthetic C-major triad still produces one C interval at 0.99 template score. Learner review against the chart is still required.
-- The learner confirmed the opening 0.0–1.1 seconds should have no chord, while the following B–E–B–E sequence is correct. Inspection found digital silence at the start, but chroma-template noise still yielded G#m/A#m; added a relative RMS energy gate to label low-energy frames `N` and retest the opening.
-- The learner identified additional false positives: 11.56–12.09s should remain E; 14.16–15.67s and 19.89–20.89s should be E major, not the estimated C#m/A#m/G#m labels. The learner also corrected one recognized word at 29.76–32.52s. Keep these corrections in the private reference, not in model predictions; the report should make the baseline's melody-versus-harmony limitation visible.
-- The recording is a private learner-provided performance, not an original composition. Keep its audio, transcript, reference, and report local; do not use them in a public demo or submission.
-- Final review: learner confirmed the private local experiment is ready as a prototype after reviewing its report. Public sharing of the recording and its analysis remains out of scope.
+- Included Daug and Eaug as distinct chord labels and recorded chart simplification rules — the learner chose to retain augmented triads, while Demo 5 is their only source; keep that song in training and disclose that cross-song performance cannot be evaluated.
+- Verified and corrected the supplied audio/chart references — all five MP3s decode locally; `Solo_Demo_1.mp3` is the intended Demo 1 audio; Demo 3's first numbered bar starts around 00:00:12; Demo 4 bar 123 is F major and its corrected ending is bars 147–149. Treat bar-derived times as approximate and review alignment against audio before training.
+- Selected Demo 3 as the whole-song holdout after confirming Demo 5 must remain in training for the augmented labels — any held-out label absent from the four training songs will be reported and counted as an evaluation miss.
+- Corrected Demo 2 bars 1–8 per learner clarification: G is labeled only on beat 1 of bars 1 and 5, with the remaining time labeled `N` (no chord); added a regression test for these intervals.
+- Applied matching temporal smoothing, short-run merging, and low-energy masking to both methods before scoring. After reviewing the low held-out result and training-only cross-validation, the learner chose to continue with the honest experiment rather than require a 75% target; do not claim the trained model outperforms the baseline.

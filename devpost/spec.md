@@ -7,136 +7,262 @@ status: approved
 
 ## How This Works, In Plain Language
 
-Cadence is a local Python experiment. It reads a short audio file of the learner's piano-and-vocal recording, runs an existing speech-recognition tool to estimate sung words and an existing chord-analysis tool to estimate chord changes, and combines their timed results in a report. It compares those estimates with a hand-checked lyric and chord reference.
+Cadence remains one small Python app that runs on the team's computer and opens in a browser. Its searchable progression library teaches the theory and plays original synthetic examples.
 
-The audio and inference stay on the learner's computer; the tool does not submit recordings to a hosted API. Model files may need to be downloaded during setup, so their provenance and licenses must be checked. Speech recognition is usually designed for speech, not singing, and chord estimation can be ambiguous in a mixed recording. The first experiment tests those uncertainties and reports results rather than assuming success.
+Before using the song analyzer, the project owner runs a training command on five original songs with their chord labels. The program turns short audio slices into a 12-number summary of the pitches they contain, teaches a small classifier which chord label goes with each summary, and tests it on one whole song it never saw. It also runs the existing chord-template analyzer on that same held-out song so the demo can show whether training helped. The command saves the trained model; visitors do not train it.
 
-Python is the accepted first-experiment format. A web application, model training, and other instruments can be considered only after this local analysis has been evaluated.
+The browser app loads that saved model. When a visitor selects a local song, the app predicts chord labels, estimates the key, tempo, and time signature, and shows uncertainty. The visitor can correct the estimates, enter a title, and mark song sections. Cadence lays out a bar-and-beat chord chart and creates a downloadable PDF. Everything runs locally; visitor audio is temporary and is not sent to a service.
+
+The model is a small experiment, not a general music-recognition system. Five songs are enough to demonstrate the training process, but not enough to promise that it will work well on every style or recording.
 
 ## The Core Journey Through the System
 
 PRD ref: `prd.md > The Core Journey`.
 
 ```text
-Provide a local piano-and-vocal recording
-    ↓
-Run the Python analysis command
-    ↓
-Speech recognizer estimates sung words and times
-    ↓
-Chord analyzer estimates chord labels and time ranges
-    ↓
-Combine the predictions on a shared timeline
-    ↓
-Compare predictions with the hand-checked reference
+Training and evaluation (project owner, before the demo)
+Original songs + chord/time labels
+    → extract pitch summaries for labeled audio frames
+    → train a small classifier on four songs
+    → compare classifier and existing template matcher on the fifth song
+    → save the model artifact
+
+Visitor app
+Open Streamlit
+    → choose experience and optionally take the scale tutorial
+    → browse/search the progression databank and lessons
+    → choose an authorized local song
+    → load audio locally and predict chord labels
+    → estimate key, tempo, and meter; visitor can correct them
+    → visitor enters title and edits section names/bar ranges
+    → preview and download a printable PDF chart
+    → optionally open a plausible matching progression lesson
 ```
 
-The input path is a local file path. Separate analysis components produce time-stamped lyric and chord predictions; a report layer aligns them and compares them with an authored reference. Predictions and reference data remain distinguishable. No cloud inference, platform URL access, database, or persistent user account is needed.
+The five-song split is by complete song, never by random audio frames from the same song. One song is reserved for evaluation so the measured comparison is not simply testing on audio the model has already seen.
 
 ## Stack
 
-- **Python:** Local command-line experiment, selected by the learner instead of the previously planned Vite website.
-- **Sung-word recognition:** Use `faster-whisper` with word timestamps as the first local ASR candidate. It is a speech model, not singing-specific; measure singing performance on the learner's recording. The implementation is MIT-licensed, and the selected `Systran/faster-whisper-base` model card lists MIT; review dependency terms before redistribution.
-- **Chord estimation:** Use `librosa` chroma features and a transparent major/minor triad-template matcher as the first baseline. Average chroma over 21 frames, smooth labels over 21 frames, merge runs shorter than 0.4 seconds, and label low-energy frames as `N` (no chord) using a relative RMS floor. This is signal processing, not a trained AI chord model; it gives a checkable starting point before collecting data for model training. `librosa` is ISC-licensed. Seventh and add9 qualities are not represented and will be approximated by triads.
-- **Reference comparison:** Store hand-checked word/chord timing in a small local data file and compare it with predictions.
-- **Audio decoder compatibility:** Constrain PyAV to versions below 19 for the selected `faster-whisper` release; the installed PyAV 19.0.2 rejected an argument used by its local decoder.
-- **No hosted inference or remote runtime service.** Models may be obtained during setup; once installed, processing the recording remains local.
+- **Python 3.12:** Reuse the current project environment and code. The project already pins Python to 3.12.
+- **Streamlit:** Local interactive browser app for the tutorial, library, analysis, chart preview, and PDF download. It keeps the Python model and interface together; the tradeoff is less precise layout control than a custom frontend. [Streamlit documentation](https://docs.streamlit.io/).
+- **librosa (existing):** Load and analyze local audio, create chroma features, estimate tempo/beat positions, and support key/meter heuristics. [librosa documentation](https://librosa.org/doc/latest/index.html).
+- **NumPy and SciPy (existing/transitive):** Numeric features and the existing chord smoothing helpers. [NumPy documentation](https://numpy.org/doc/stable/); [SciPy documentation](https://docs.scipy.org/doc/scipy/).
+- **scikit-learn (new):** A small multinomial logistic-regression classifier trained on the labeled pitch summaries; no GPU or large neural-network framework. The accepted tradeoff is that a small training set may not generalize to different sounds or styles. [Logistic regression documentation](https://scikit-learn.org/stable/modules/linear_model.html#logistic-regression).
+- **joblib (provided through scikit-learn):** Save and reload the small local model artifact. Load only the project's own trusted model file. [joblib documentation](https://joblib.readthedocs.io/en/stable/).
+- **ReportLab (new):** Generate a real, multi-page downloadable PDF in memory without a web service. [ReportLab documentation](https://docs.reportlab.com/).
+- **Python standard library `wave`:** Keep support for creating or validating generated WAV lesson examples. [Python `wave` documentation](https://docs.python.org/3/library/wave.html).
+- **Tests:** Continue using `unittest`; cover label parsing, training/evaluation splits, feature/model behavior, metadata estimates, PDF output, progression matching, and existing analysis behavior.
+- **No hosted model, external API, cloud storage, remote audio processing, account system, or platform download.**
 
-The `faster-whisper` documentation describes local Whisper inference, model download, and word timestamps: [faster-whisper](https://github.com/SYSTRAN/faster-whisper). The selected converted model downloads from Hugging Face, whose model card lists MIT: [faster-whisper base model](https://huggingface.co/Systran/faster-whisper-base). `librosa` provides chroma features for music analysis: [librosa feature documentation](https://librosa.org/doc/latest/feature.html). These tools do not guarantee accurate transcription of singing or chords.
+The older `faster-whisper` lyric experiment and its CLI remain separate from the new app. The existing chord-template estimator remains available as the evaluation baseline; it is not the trained visitor-facing model.
 
 ## Where It Runs and How Someone Tries It
 
-- **Runtime:** Local Python command-line experiment on the learner's computer; the current CLI accepts nonempty WAV files only.
-- **Language hint:** `--language` optionally passes a language code to Whisper when automatic detection is incorrect; omitting it preserves automatic detection.
-- **Requirements:** Python version and supported audio formats depend on the selected candidate libraries; verify these before installing. A model download may require internet during setup. No API key or hosted inference.
-- **Try it:** Run `python analyze.py <recording.wav> --language id --reference data/reference.json --output output` for Indonesian vocals and a local reference (or omit `--language` for automatic detection); inspect the generated analysis and report.
-- **Input:** Begin with a short WAV recording of the learner's piano-and-vocal performance; expand formats only if needed.
-- **Privacy:** Do not upload audio to a service. Keep the recording, transcript, reference, and report local and out of the public repository.
+- **Runtime:** Local Streamlit process on the learner's Windows computer; the browser connects to `http://localhost:8501`.
+- **Install/update dependencies:** From the project root, run `.venv\Scripts\python.exe -m pip install -e .`.
+- **Show training and evaluation:** Run `.venv\Scripts\python.exe -m cadence.training`. The command reads the prepared annotations, trains on the four training songs, compares both methods on the held-out song, prints the measured results and limitations, then saves the model to `models\chord_classifier.joblib`.
+- **Start the visitor app:** Run `.venv\Scripts\python.exe -m streamlit run app.py`, then use the browser tab it opens or navigate to `http://localhost:8501`.
+- **Demo path:** Show the training command and output first; then show the app using the saved model, explore a progression lesson, analyze an authorized local song, correct metadata/sections, and export the PDF.
+- **Audio input:** Support full-song WAV and MP3 if the installed local decoder can read them. Verify MP3 support early. If decoding fails, show a clear supported-format error and do not show fabricated results.
+- **Privacy and rights:** The learner confirmed the original training songs and performances may be public. Include only those five approved originals and their annotations; do not include the earlier copyrighted cover or private analysis artifacts. Visitor audio is processed locally, held in a temporary file only as needed, and removed after analysis.
+- **Hackathon submission:** A short demo video and public GitHub repository are required. Deployment is optional; a local app is sufficient for the recording.
 
 ## Look and Feel
 
-The generated report should prioritize legibility and clear comparison. Label predicted and reference lyrics/chords distinctly, show their time ranges, and avoid visual treatment that suggests predictions are verified facts.
+Carry forward `prd.md > Look and Feel` and `scope.md > Inspiration & Identity`: warm coffee/charcoal surfaces with amber, brass, and cream accents; minimal, readable layout; restrained music/café details. Keep chord estimates and metadata uncertainty prominent. The PDF uses a clean, high-contrast print layout rather than the app's dark theme, with clear title, key, tempo, time signature, sections, bar numbers, beat dots, and chord symbols.
+
+Streamlit supports a theme and small CSS refinements, but not the layout freedom of a custom frontend. Prioritize a coherent library and chart preview over decoration.
 
 ## Components
 
-### Local Audio Input
+### Streamlit App and Experience Choice
 
-Validates a user-supplied local audio path and reports unsupported or unreadable input clearly.
-PRD ref: `prd.md > The Core Journey`, `Features and Behavior > Local Recording Analysis`.
+`app.py` presents experience choice, beginner tutorial, navigation to the databank or song analysis, and temporary session values for query, filter, selected lesson, uploaded analysis, corrected metadata, and section labels. No user account or persistent song history.
+Implements `prd.md > Experience choice and beginner tutorial`.
 
-### Sung-Word Recognition
+### Beginner Scale Tutorial
 
-Runs the selected local recognition and alignment tool on the vocal in a piano-and-vocal recording and returns words with timing and confidence information when available. Singing performance must be tested rather than assumed.
-PRD ref: `prd.md > Features and Behavior > Sung Words and Chord Estimates`, `States and Boundaries`.
+Explains diatonic triad qualities I, ii, iii, IV, V, vi, and vii° using a key-C example, with a concise explanation of diminished symbols. It is content, not a quiz.
+Implements `prd.md > Experience choice and beginner tutorial`.
 
-### Chord Estimation
+### Progression Data and Databank
 
-Runs a locally selected chord-analysis tool on the recording and returns chord labels with start/end times. Preserve uncertainty and avoid presenting the output as ground truth.
-PRD ref: `prd.md > Features and Behavior > Sung Words and Chord Estimates`.
+`data/progressions.json` holds stable IDs, names, Roman-numeral sequences, chord degrees/qualities, curated frequency groups, explanations, theory notes, and diagram data. Streamlit searches by name or sequence and filters by frequency. Frequency labels remain curated guidance.
+Implements `prd.md > Searching and browsing the progression databank`.
 
-### Reference Comparison and Report
+### Scale and Key Theory
 
-Combines timed predictions with a hand-checked reference and writes a readable report in a local output directory. Keep source predictions and reference data separate so a comparison cannot overwrite the original output.
-PRD ref: `prd.md > The Core Journey`, `Features and Behavior > Sung Words and Chord Estimates`.
+`src/cadence/theory.py` maps the seven diatonic scale degrees and triad qualities to note names in all 12 major keys and provides lesson chord spellings. It does not infer a song key.
+Implements `prd.md > Experience choice and beginner tutorial` and `prd.md > Understanding and hearing a progression`.
+
+### Progression Lesson and Diagrams
+
+`app.py` renders the selected progression's explanation, theory diagram, chord spellings across keys, synthetic sample, and navigation back to the library. Diagrams are generated locally without remote assets.
+Implements `prd.md > Understanding and hearing a progression`.
+
+### Synthetic Audio Examples
+
+`src/cadence/audio_examples.py` generates short, original WAV examples from the starter progression notes and a simple synthesized tone/envelope. They illustrate the pattern but do not sound like a recorded band.
+Implements `prd.md > Understanding and hearing a progression`.
+
+### Shared Audio Features and Existing Baseline
+
+`src/cadence/audio_features.py` loads local audio as mono at a fixed sample rate and creates 12-bin chroma features with frame timestamps. It is shared by training, inference, and the existing baseline where practical. `src/cadence/chords.py` retains the current major/minor template matcher for baseline comparison and existing CLI behavior.
+Implements `prd.md > Training and evaluating the chord model` and `prd.md > Analyzing a local song`.
+
+### Training and Held-Out Evaluation
+
+`src/cadence/training.py` reads `data/training/annotations.csv`. Each row identifies a song/audio file, start and end times, and a chord label. Feature-frame timestamps inside each labeled interval inherit that chord label; unlabeled gaps are ignored unless explicitly marked `N`. Normalize common flat spellings to the sharp-based chord labels already used by the baseline. Simplify seventh/sixth chords to the same-root major/minor triad and ignore slash-chord bass inversions; keep observed `Daug` and `Eaug` as their own augmented-triad labels. Validate missing audio, invalid/overlapping intervals, unsupported labels, and songs without usable labeled audio.
+
+Use Demo 3 as the whole-song held-out evaluation set and the other four for training. Keep Demo 5 in the training set because it is the only recording with augmented chords; report that `Daug` and `Eaug` have examples from one song and cannot be independently evaluated on a held-out song. A small scikit-learn logistic-regression classifier learns from the chroma features. Train on the 24 major/minor triad labels, observed `Daug`/`Eaug` labels, and `N` (no chord); labels not represented in the training data cannot be learned, and other chord qualities are outside the first model's vocabulary.
+
+Project both methods' predictions and the reference annotations onto the same feature-frame timestamps, and score only frames with reference labels. Apply the same temporal smoothing, short-run merging, and low-energy masking to both prediction streams before scoring. Print frame-level accuracy and macro-F1 so common chords do not hide errors on less frequent labels; count held-out labels absent from training as misses and report them separately. Do not claim a successful improvement unless the measured result supports it. Save the fitted model to `models/chord_classifier.joblib`; training is a project-owner command, not a visitor action.
+Implements `prd.md > Training and evaluating the chord model`.
+
+### Pre-Trained Chord Inference
+
+`src/cadence/chord_model.py` loads the saved model artifact and predicts the chord label for each chroma frame. Smooth short runs using the existing helpers where appropriate, convert frames into chord events with start/end times, and retain a confidence-like model score only as a heuristic, not a calibrated probability. If the model artifact is absent or cannot be loaded, show an actionable error that points to the training command.
+Implements `prd.md > Training and evaluating the chord model` and `prd.md > Analyzing a local song`.
+
+### Song Metadata and Bar/Beat Alignment
+
+`src/cadence/song_metadata.py` estimates:
+
+- **Key:** Compare the song-wide chroma profile to major/minor key profiles and return the strongest candidate with heuristic uncertainty.
+- **Tempo and beat times:** Use librosa beat tracking; tempo and beats are estimates.
+- **Time signature:** Use beat-accent periodicity to suggest a common meter such as 3/4, 4/4, or 6/8. This heuristic is not reliable for every song; when confidence is weak, prompt the visitor to confirm or correct it.
+
+The visitor can edit key, tempo, and time signature. They enter the song title and create or edit section names with bar ranges. Convert chord event times to bar/beat positions using the confirmed tempo and meter. Do not silently guess section boundaries.
+Implements `prd.md > Analyzing a local song`.
+
+### Key-Independent Pattern Matching
+
+`src/cadence/matching.py` removes no-chord spans, collapses consecutive duplicate chord labels, and compares ordered chord windows against each starter Roman-numeral pattern transposed into all 12 major keys. Return a plausible pattern and implied key together; this is a heuristic match, not a separate trained progression model. If candidates are weak or ambiguous, show no link or clearly uncertain candidates rather than force a lesson.
+Implements `prd.md > Analyzing a local song`.
+
+### Performance Chart PDF
+
+`src/cadence/chart_pdf.py` builds the downloadable PDF in memory with ReportLab. It lays out song title, corrected key/tempo/time signature, user-defined sections, numbered bars, beat dots, and estimated chord labels. Longer songs flow across readable pages. Include a clear estimate disclaimer. Streamlit provides the download button; no chart is saved after the visitor leaves.
+Implements `prd.md > Exporting a performance chart`.
+
+### Tests
+
+Use synthetic audio and small synthetic annotation tables for automated checks; do not make tests depend on the learner's recordings. Verify:
+
+- Annotation parsing, interval validation, chord-label normalization (including augmented labels), and song-level split (no song appears in both training and holdout).
+- The classifier can fit a known synthetic chord-feature set and produces labels in its supported vocabulary.
+- Baseline and trained predictions are both scored against the same held-out labels.
+- Chord event timing, candidate key/tempo/meter behavior, confidence/uncertain paths, and bar alignment.
+- Pattern matching for known, ambiguous, and no-match sequences.
+- PDF output has a valid PDF header, includes the requested chart fields on manual inspection, and remains readable across multiple pages for long charts.
+- Existing theory, progression content, synthetic WAV, and private CLI tests still pass.
+
+Implements acceptance criteria from all `prd.md > Features and Behavior` headings.
 
 ## Data Model
 
-- **Input recording:** Local audio path; first test uses a short PCM WAV of the learner's piano-and-vocal performance.
-- **Reference annotations** (`data/reference.json`): hand-checked lyric words/segments and chord labels with start/end times for the exact recording; this file stays local and ignored by Git.
-- **Analysis output** (`output/analysis.json`): recording metadata, predicted lyric words/timestamps, chord labels/time ranges, tool/version information, and confidence when available.
-- **Comparison output** (`output/report.html`): predictions and reference remain separately labeled; comparison results are descriptive for this sample only.
-- Do not commit the learner's raw audio, personal voice recording, transcript, reference, or generated report.
+- **Progression entry** (`data/progressions.json`): `id`, `name`, `roman_numerals`, `degrees`/qualities, `frequency`, `description`, `theory_relationship`, and optional diagram data. Checked-in educational content.
+- **Training annotation** (`data/training/annotations.csv`): `song_id`, `audio_path`, `start_seconds`, `end_seconds`, and `chord_label`. The learner's chart is a human reference; it is converted to these timed labels before training. Audio and annotation assets are the five learner-approved original songs.
+- **Train/holdout split** (`data/training/split.json`): song IDs assigned to the training set or the single held-out song. Split by song, not by audio frame.
+- **Trained model** (`models/chord_classifier.joblib`): fitted classifier generated by the owner training command and loaded by the local app. Add a narrow `.gitignore` exception for this approved public artifact while keeping all other private `/models/` contents ignored, so a fresh checkout can run the analyzer without exposing unrelated model files.
+- **Training report** (terminal output, optionally a generated report under ignored `output/`): training completion, held-out baseline/model scores, and data limitations.
+- **Analysis result** (temporary Streamlit session state): estimated chord events, key, tempo, meter, confidence notes, and candidate progression matches. Never persist visitor audio or analysis.
+- **Chart inputs** (temporary session state): title, corrected metadata, and user-marked section names/bar ranges. Generate PDF bytes for download; clear with the session.
+- **Session state:** experience choice, tutorial position, search query, frequency filter, selected lesson, analysis result, and chart edits. It ends with the browser session; there are no accounts or saved history.
 
 ## File Structure
 
 ```text
 Build With AI/
-├── pyproject.toml                      # Python package metadata and dependencies
-├── analyze.py                          # Local CLI entry point
-├── src/cadence/
-│   ├── transcription.py                # Sung-word recognition and timing
-│   ├── chords.py                        # Chord estimation and timing
-│   ├── comparison.py                   # Compare estimates with reference annotations
-│   └── report.py                        # Generate a readable local report
+├── app.py                              # Streamlit app and page rendering
+├── .gitignore                          # Allow-list only the approved public model artifact
+├── pyproject.toml                      # Python dependencies and training command
 ├── data/
-│   └── reference.example.json          # Schema/example; no personal recording
-├── tests/                               # Tests for parsing, alignment, comparison
-├── output/                              # Local, private analysis results
-└── devpost/                            # Canonical planning documents and review companions
+│   ├── progressions.json               # Curated public progression lessons
+│   └── training/
+│       ├── annotations.csv              # Chord labels aligned to audio times
+│       ├── split.json                   # Four train songs, one held-out song
+│       └── audio/                       # Five learner-approved original tracks
+├── models/
+│   └── chord_classifier.joblib          # Saved model used by the app
+├── src/cadence/
+│   ├── audio_features.py                # Shared local audio loading/chroma
+│   ├── audio_examples.py                # Synthetic WAV lesson examples
+│   ├── chart_pdf.py                     # Printable PDF generation
+│   ├── chord_model.py                   # Load model and predict chord events
+│   ├── chords.py                        # Existing template baseline and CLI support
+│   ├── matching.py                      # Pattern matching across 12 major keys
+│   ├── song_metadata.py                 # Key, tempo, meter, and bar alignment
+│   ├── theory.py                        # Major-scale qualities and chord spellings
+│   ├── training.py                      # Training and held-out comparison command
+│   ├── cli.py                           # Existing private analysis experiment
+│   ├── comparison.py                    # Existing private experiment report logic
+│   └── transcription.py                 # Existing private word-estimation component
+├── tests/
+│   ├── test_audio_features.py
+│   ├── test_chart_pdf.py
+│   ├── test_chord_model.py
+│   ├── test_matching.py
+│   ├── test_song_metadata.py
+│   ├── test_theory.py
+│   ├── test_training.py
+│   ├── test_cli.py                    # Existing private-analysis tests
+│   ├── test_chords.py                 # Existing template-estimator tests
+│   ├── test_comparison.py             # Existing reference-report tests
+│   └── test_transcription.py          # Existing transcription tests
+├── recordings/                          # Existing ignored private experiments only
+├── output/                              # Ignored temporary analysis/training reports
+└── devpost/                             # Scope, PRD, spec, and build checklist
 ```
 
 ## External Services and Dependencies
 
-- **Speech recognition/alignment:** Use `faster-whisper` for local Whisper inference and word timestamps. Confirm the chosen model card/license and dependency terms, then test singing performance.
-- **Chord analysis:** `librosa` chroma features with a simple major/minor triad-template baseline; evaluate it against the learner's known progression before extending chord types.
-- **Audio decoding:** Add a local decoder only if required; WAV is the initial target.
-- **External runtime services:** None. Do not transmit audio or reference annotations to a hosted API.
+- **Streamlit:** Local UI only; no hosted Streamlit service. [Documentation](https://docs.streamlit.io/).
+- **librosa:** Local audio decoding, chroma, beat tracking, and tempo estimate. [Documentation](https://librosa.org/doc/latest/index.html). Verify MP3 support early; do not imply a decoder lookup happened before testing it.
+- **scikit-learn:** New local classifier dependency. [Documentation](https://scikit-learn.org/stable/).
+- **joblib:** Local model persistence used by scikit-learn. [Documentation](https://joblib.readthedocs.io/en/stable/).
+- **ReportLab:** New local PDF-generation dependency. [Documentation](https://docs.reportlab.com/).
+- **NumPy/SciPy:** Existing numeric dependencies for feature and signal operations. [NumPy](https://numpy.org/doc/stable/); [SciPy](https://docs.scipy.org/doc/).
+- **No external APIs, hosted model inference, credentials, cloud storage, analytics, or remote audio processing.**
 
 ## Important Failure Modes
 
-- **Sung words are missed or hallucinated** → Show model output as an estimate, retain the reference separately, and report the mismatch; do not substitute reference lyrics as model output.
-- **Chord estimates are unstable or ambiguous** → Preserve predicted segments/confidence when available and report poor fit instead of inventing stable chords.
-- **Dependency or model license is unsuitable** → Do not add it; pause and evaluate a compatible alternative.
-- **Model or audio input is unavailable/unsupported** → Return a clear error and preserve existing local files and references.
-- **Installation or local inference exceeds available resources** → Measure this in the first experiment and discuss a scope/architecture revision rather than silently switching to cloud processing.
+- **Missing or inconsistent training annotations/audio** → stop training with a clear file/row error; do not save a success-shaped model.
+- **Training data lacks chord labels or the held-out song contains labels absent from training** → report unsupported labels and the limitation; still compare only what can be measured without pretending the model knows unseen classes.
+- **Saved model missing or incompatible** → app explains how to rerun the local training command; do not silently fall back to the old baseline as if it were the trained model.
+- **Audio decoder fails or metadata estimate is weak** → show a clear file error or ask the visitor to correct key/tempo/meter before exporting.
+- **PDF generation fails** → keep valid on-screen estimates available and explain the export failure.
+- **No plausible progression match** → show estimates but do not link an unrelated lesson.
 
 ## What Was Simplified and Why
 
-- One learner-provided piano-and-vocal recording instead of a broad catalog — provides a bounded feasibility test.
-- Existing local tools instead of training a model — avoids implying a large labeled training set or high accuracy exists.
-- A hand-checked reference alongside predictions — makes errors visible and comparable.
-- Python command-line experiment instead of a web app — tests analysis before interface and deployment work.
-- Local processing instead of a hosted API — keeps the learner's voice recording on their own device.
+- **Small supervised classifier on 12-bin chroma features** instead of a large neural network — it genuinely learns from labeled examples, is quick to run locally, and needs no GPU; it may not generalize beyond the five songs or their chord vocabulary.
+- **Five songs with one whole-song holdout** instead of a large training corpus — enough to demonstrate training and a fair initial comparison, not enough to claim broad accuracy.
+- **Major/minor triads, observed augmented labels, and no-chord** instead of all chord qualities — keeps the first label set bounded; seventh/sixth extensions and slash-bass inversions are simplified to root triads, while other qualities remain out of scope. Daug and Eaug appear only in Demo 5, so they cannot be evaluated on a separate held-out song.
+- **Manual annotation table prepared from chord charts** instead of automatic PDF chart reading — the learner's chord chart supplies musical truth, while precise timed labels are the reliable training input.
+- **User-marked song sections** instead of automatic structure detection — avoids adding a second ML problem.
+- **Heuristic metadata suggestions with user correction** instead of an expert transcription engine — key, tempo, and meter remain estimates, particularly the time signature.
+- **Local training command plus saved model artifact** instead of training whenever a visitor opens the app — training is demonstrable, but visitors can use the pre-trained model immediately.
+- **ReportLab-generated chart PDF** instead of browser print styling — provides a consistent downloadable file offline, at the cost of one small dependency.
+- **One local Streamlit app** instead of separate frontend, API, and hosted inference — reuses the team's Python experience and avoids services/accounts.
+- **Curated static progression library and generated examples** instead of a database or commercial song samples — keeps the educational lesson rights-safe and small.
 
 ## Decisions and Open Issues
 
-- **Learner choice — private piano-and-vocal recording:** The learner will provide their own voice and piano accompaniment; the recording and its analysis stay private.
-- **Learner choice — automatic sung-word transcription:** The experiment should recognize words from the vocal recording rather than use supplied lyrics as the prediction.
-- **Learner choice — Python experiment:** Use a local Python analysis experiment before deciding whether to build a web app.
-- **Learner choice — existing analysis tools:** Start with existing tools, not training a model from scratch.
-- **Privacy constraint:** Keep the recording and inference local; do not use a hosted transcription API.
-- **Sharing constraint:** Do not publish this recording, its transcript, reference annotations, or generated report.
-- **Open build investigation:** Verify local runtime requirements and word-timestamp behavior on the learner's recording; verify `librosa` chroma/template behavior on the learner's piano recording. The selected model card lists MIT, but dependency terms still need review before redistribution.
-- **Open measurement:** Agree how to annotate the reference and report word/chord mismatches; one recording cannot establish general accuracy.
-- **Observed limitation:** The opening B–E–B–E sequence matches the learner's reference, but the initial baseline incorrectly labeled three learner-identified E-major spans as C#m/A#m/G#m. Preserve these predictions and show the verified E-major reference separately; this sample does not yet establish reliable chord recognition.
-- **Future decision:** Revisit a web interface, more instruments, and a training dataset only after this experiment produces measured evidence.
+- **Learner choice — local Python web app:** Keep the previously selected Python 3.12 and Streamlit runtime; no deployment is needed for the demo.
+- **Learner choice — model type:** Use a small supervised classifier trained from labeled audio features, not a large pretrained or hosted neural network.
+- **Learner choice — chord labels:** Start with 24 major/minor triads and no-chord, and include observed Daug/Eaug as distinct augmented-triad labels. Simplify seventh/sixth extensions to their same-root major/minor triads and ignore slash-chord bass inversions. Both augmented labels appear only in Demo 5; keep it in training and disclose that cross-song performance is unmeasured. Other qualities are not claimed as supported.
+- **Learner choice — training data:** Use five distinct original songs; reserve one complete song for evaluation and train on the other four.
+- **Learner choice — baseline comparison:** Compare the trained classifier and existing template matcher against the same held-out song's reference labels; report the measured result even if training does not improve it.
+- **Learner choice — labels:** Prepare a simple timed annotation table from chord charts; the model needs chord labels aligned to audio intervals, and automatic PDF input is deferred.
+- **Learner choice — visitor experience:** Train before public use with a command-line run; include the resulting model for visitors to use without retraining.
+- **Learner choice — time signature:** Suggest a common meter with uncertainty and let users correct it; time signature detection is heuristic.
+- **Learner choice — PDF export:** Use a direct local PDF download with ReportLab; users manually supply title and song sections.
+- **Rights/privacy decision:** The learner confirmed their training recordings and performances are their own and may be publicly shared. Include only the five approved original songs and annotations; never include the earlier copyrighted cover or visitor uploads.
+- **Model artifact visibility:** Keep existing `/models/` ignore protection and allow-list only `models/chord_classifier.joblib`, which the learner wants available to app users.
+- **Useful uncertainty — how a chart becomes model knowledge:** A chord name in a PDF is not enough by itself; training needs the corresponding audio interval. The agreed path is to prepare start/end times and chord labels from the chart, deriving approximate times from bars, tempo, and meter where the recording is steady.
+- **Verified — MP3 support:** The installed local librosa decoder successfully read all five supplied MP3 recordings. Retain clear errors for unsupported or unreadable future files.
+- **Verified — chart timing notes:** Pair `Solo_Demo_1.mp3` with `Chord Analysis Demo 1.pdf`; Demo 3's first numbered bar begins at approximately 00:00:12; Demo 4 bar 123 is F major and its corrected final bars are 147–149 in 6/8 at the charted 90 BPM. The measured pulse is approximately 89 BPM, which makes the corrected bar count broadly consistent with the 306.6-second recording; use approximate bar-derived timestamps and inspect alignment when preparing labels.
+- **Open investigation — model performance:** The five-song data set may not beat the template baseline. The held-out comparison is the evidence; no minimum accuracy or improvement is promised.
+- **Build check — training assets:** Verify audio file sizes, annotation coverage, and label overlap before the first training run. Keep training/test songs separate at song level.
+- **Open content task:** Select a small set of less-common diatonic progressions while preparing the lesson content.
