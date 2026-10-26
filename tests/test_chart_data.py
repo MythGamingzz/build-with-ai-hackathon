@@ -129,19 +129,37 @@ class ChartDataTests(unittest.TestCase):
 
     def test_measure_format_shows_chords_and_dots_without_beat_numbers(self) -> None:
         chart = self._build(
-            duration=2.0,
+            duration=6.0,
             events=(
-                ChordEvent(0.0, 0.5, "B", 0.8),
-                ChordEvent(1.0, 2.0, "D#m", 0.8),
+                ChordEvent(0.0, 1.0, "N", 0.8),
+                ChordEvent(1.0, 2.0, "B", 0.8),
+                ChordEvent(2.0, 3.0, "D#m", 0.8),
             ),
-            sections=(SectionRange("Verse", 1, 1),),
+            sections=(SectionRange("Verse", 1, 3),),
         )
 
         measure = format_bar_measure(chart.groups[0].bars[0], 4)
 
         self.assertEqual(measure, "| B . D#m . |")
+        self.assertEqual(chart.chart_start_seconds, 1.0)
+        self.assertEqual(chart.duration, 5.0)
         self.assertNotIn("1:", measure)
         self.assertNotIn("3:", measure)
+        self.assertNotIn("N", measure)
+
+    def test_all_no_chord_events_keep_full_duration_and_render_as_dots(self) -> None:
+        chart = self._build(
+            duration=4.0,
+            events=(ChordEvent(0.0, 4.0, "N", 0.9),),
+            sections=(SectionRange("Song", 1, 2),),
+        )
+
+        self.assertIsNone(chart.chart_start_seconds)
+        self.assertEqual(chart.duration, 4.0)
+        self.assertEqual(
+            format_bar_measure(chart.groups[0].bars[0], 4),
+            "| . . . . |",
+        )
 
     def test_rejects_overlapping_section_ranges(self) -> None:
         with self.assertRaisesRegex(ChartDataError, "overlaps"):

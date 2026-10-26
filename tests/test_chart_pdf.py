@@ -32,6 +32,7 @@ class ChartPdfTests(unittest.TestCase):
         self.assertIn(b"D major", pdf_bytes)
         self.assertIn(b"experimental estimates", pdf_bytes)
         self.assertIn(b"Bar 1", pdf_bytes)
+        self.assertIn(b"Bar 1 starts at the first predicted chord", pdf_bytes)
         self.assertNotIn(b"Beat 1", pdf_bytes)
         self.assertNotIn(b"1: D", pdf_bytes)
 

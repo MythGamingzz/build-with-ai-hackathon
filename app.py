@@ -2,6 +2,7 @@ import hashlib
 from html import escape
 import math
 from pathlib import Path
+from urllib.parse import quote
 
 import streamlit as st
 from streamlit.runtime.uploaded_file_manager import UploadedFile
@@ -15,7 +16,9 @@ from cadence.chart_data import (
     SectionRange,
     bar_beat_slots,
     build_chart_data,
+    first_chord_start,
     format_bar_measure,
+    total_bar_count,
 )
 from cadence.chart_pdf import create_chart_pdf
 from cadence.progression_data import (
@@ -177,6 +180,23 @@ def _navigate(page: str) -> None:
     st.rerun()
 
 
+def _open_lesson_query(progressions: tuple[Progression, ...]) -> None:
+    progression_id = st.query_params.get("lesson")
+    if progression_id is None:
+        return
+    progression = next(
+        (item for item in progressions if item.id == progression_id),
+        None,
+    )
+    if progression is None:
+        st.error("That progression lesson link is not available.")
+        return
+    st.session_state.selected_progression_id = progression.id
+    st.session_state.page = "lesson"
+    del st.query_params["lesson"]
+    st.rerun()
+
+
 def _apply_styles() -> None:
     st.markdown(
         """
@@ -255,6 +275,38 @@ def _apply_styles() -> None:
         .chart-measure-content .chart-chord {
             display: inline-block;
             padding: 0.1rem 0.2rem;
+        }
+        .chart-hover-match {
+            display: inline-flex;
+            position: relative;
+        }
+        .chart-hover-match .chart-tooltip {
+            background: #f3e7cf;
+            border: 1px solid #bd8640;
+            border-radius: 0.45rem;
+            box-shadow: 0 0.4rem 1rem #0009;
+            color: #211f1b;
+            display: none;
+            font-family: sans-serif;
+            font-size: 0.8rem;
+            left: 50%;
+            min-width: 12rem;
+            padding: 0.55rem 0.7rem;
+            position: absolute;
+            top: 100%;
+            transform: translateX(-50%);
+            white-space: normal;
+            z-index: 1000;
+        }
+        .chart-hover-match:hover .chart-tooltip,
+        .chart-hover-match:focus-within .chart-tooltip {
+            display: block;
+        }
+        .chart-tooltip a {
+            color: #68430f;
+            display: inline-block;
+            font-weight: 700;
+            margin-top: 0.3rem;
         }
         .stButton > button {
             border-color: #bd8640;
@@ -623,12 +675,12 @@ def _set_analysis_result(
         if key.startswith(("analysis_section_name_", "analysis_section_start_", "analysis_section_end_")):
             del st.session_state[key]
     tempo = float(st.session_state.analysis_tempo)
-    numerator, denominator = (
-        int(value)
-        for value in st.session_state.analysis_time_signature.split("/")
+    chart_start = first_chord_start(result.events, result.duration) or 0.0
+    total_bars = total_bar_count(
+        result.duration - chart_start,
+        tempo,
+        st.session_state.analysis_time_signature,
     )
-    bar_seconds = 60.0 / tempo * 4.0 / denominator * numerator
-    total_bars = max(1, math.ceil(result.duration / bar_seconds))
     st.session_state.analysis_sections = [
         {"name": "Song", "start_bar": 1, "end_bar": total_bars, "whole_song": True}
     ]
@@ -734,10 +786,32 @@ def _chart_input_signature(result: SongAnalysis) -> str:
     return hashlib.sha256(repr(signature).encode("utf-8")).hexdigest()
 
 
+def _matched_chord_html(
+    label: str,
+    progression: Progression,
+    key: str,
+) -> str:
+    lesson_link = f"?lesson={quote(progression.id, safe='')}"
+    match_details = (
+        f"{progression.name} ({progression.pattern}) in {key}"
+    )
+    accessible_label = (
+        f"{label}, possible match {match_details}, open progression lesson"
+    )
+    return (
+        '<span class="chart-hover-match" tabindex="0" '
+        f'aria-label="{escape(accessible_label)}">'
+        f'<span class="chart-match">{escape(label)}</span>'
+        '<span class="chart-tooltip" role="tooltip">'
+        f"<strong>{escape(match_details)}</strong><br/>"
+        f'<a href="{lesson_link}">Open progression lesson</a>'
+        "</span></span>"
+    )
+
+
 def _render_chart_group(
     chart: ChartData,
     group: ChartGroup,
-    group_index: int,
     show_lesson_link: bool,
 ) -> None:
     if not group.bars:
@@ -749,12 +823,6 @@ def _render_chart_group(
             f"Possible match in {group.name}: {progression.name} in "
             f"{group.match.key} (heuristic; review the chord estimates)."
         )
-        if show_lesson_link and st.button(
-            f"Open {progression.name} lesson",
-            key=f"chart_match_lesson_{group_index}",
-        ):
-            st.session_state.selected_progression_id = progression.id
-            _navigate("lesson")
     elif group.match is not None and group.match.ambiguous:
         st.info(
             f"Several starter patterns could fit {group.name}: "
@@ -772,27 +840,43 @@ def _render_chart_group(
                     continue
                 labels: dict[str, bool] = {}
                 for chord in slot:
+                    if chord.label == "N":
+                        continue
                     labels[chord.label] = labels.get(chord.label, False) or (
                         chord.highlighted and show_lesson_link
                     )
-                beat_html.append(
-                    " / ".join(
-                        (
-                            '<span class="chart-match">'
-                            if highlighted
-                            else '<span class="chart-chord">'
+                if not labels:
+                    beat_html.append('<span class="chart-chord">.</span>')
+                    continue
+                progression = (
+                    group.match.progression
+                    if group.match is not None
+                    else None
+                )
+                rendered_labels = []
+                for label, highlighted in labels.items():
+                    if highlighted and progression is not None and show_lesson_link:
+                        rendered_labels.append(
+                            _matched_chord_html(
+                                label,
+                                progression,
+                                group.match.key or "",
+                            )
                         )
-                        + f"{escape(label)}</span>"
-                        for label, highlighted in labels.items()
-                    )
+                    else:
+                        rendered_labels.append(
+                            f'<span class="chart-chord">{escape(label)}</span>'
+                        )
+                beat_html.append(
+                    " / ".join(rendered_labels)
                 )
             row_html.append(
                 '<div class="chart-measure" '
                 f'aria-label="{escape(format_bar_measure(bar, chart.beats_per_bar))}">'
                 f'<div class="chart-measure-number">Bar {bar.number}</div>'
-                '<div class="chart-measure-content">| '
+                '<div class="chart-measure-content">'
                 + " ".join(beat_html)
-                + " |</div></div>"
+                + "</div></div>"
             )
         st.markdown(
             '<div class="chart-measure-row">'
@@ -818,7 +902,6 @@ def _render_chart_preview(result: SongAnalysis, progressions: tuple[Progression,
             )
             for section in st.session_state.analysis_sections
         )
-        first_beat = result.metadata.beat_times[0] if result.metadata.beat_times else 0.0
         try:
             chart = build_chart_data(
                 title=st.session_state.analysis_title,
@@ -829,7 +912,6 @@ def _render_chart_preview(result: SongAnalysis, progressions: tuple[Progression,
                 events=result.events,
                 sections=sections,
                 progressions=progressions,
-                first_beat_time=first_beat,
             )
         except ChartDataError as exc:
             st.error(str(exc))
@@ -860,11 +942,21 @@ def _render_chart_preview(result: SongAnalysis, progressions: tuple[Progression,
         f"{escape(preview.key)} · {preview.tempo_bpm:g} BPM · "
         f"{escape(preview.time_signature)}"
     )
-    for group_index, group in enumerate(preview.groups):
+    if preview.chart_start_seconds is None:
+        st.info(
+            "No chord was predicted. Empty beats are shown as dots; the chart "
+            "keeps the recording's full duration."
+        )
+    else:
+        st.caption(
+            f"Bar 1 starts at the first predicted chord "
+            f"({preview.chart_start_seconds:.2f}s); any earlier no-chord intro "
+            "is excluded."
+        )
+    for group in preview.groups:
         _render_chart_group(
             preview,
             group,
-            group_index,
             show_lesson_link=preview_is_current,
         )
 
@@ -942,14 +1034,13 @@ def _render_song_analysis(
     st.text_input("Song title", key="analysis_title")
     if not st.session_state.analysis_title.strip():
         st.info("Add a song title before making a performance chart.")
-    bar_seconds = (
-        60.0
-        / float(tempo)
-        * 4.0
-        / int(st.session_state.analysis_time_signature.split("/")[1])
-        * int(st.session_state.analysis_time_signature.split("/")[0])
+    chart_start = first_chord_start(result.events, result.duration)
+    chart_time_origin = chart_start if chart_start is not None else 0.0
+    total_bars = total_bar_count(
+        result.duration - chart_time_origin,
+        float(tempo),
+        st.session_state.analysis_time_signature,
     )
-    total_bars = max(1, math.ceil(result.duration / bar_seconds))
     layout = (float(tempo), st.session_state.analysis_time_signature)
     if st.session_state.analysis_layout != layout:
         adjusted_sections = []
@@ -974,9 +1065,20 @@ def _render_song_analysis(
     _render_analysis_sections(total_bars, layout_id)
 
     st.subheader("Estimated chord spans")
-    first_beat = metadata.beat_times[0] if metadata.beat_times else 0.0
+    if chart_start is not None:
+        st.caption(
+            "Bar and beat positions start at the first predicted chord; any earlier "
+            "no-chord intro is excluded from the chart."
+        )
+    first_beat = (
+        chart_start
+        if chart_start is not None
+        else (metadata.beat_times[0] if metadata.beat_times else 0.0)
+    )
     chord_rows = []
     for event in result.events:
+        if chart_start is not None and event.start_seconds < chart_start:
+            continue
         bar, beat = bar_beat_position(
             event.start_seconds,
             float(tempo),
@@ -985,7 +1087,7 @@ def _render_song_analysis(
         )
         chord_rows.append(
             {
-                "Chord estimate": event.label,
+                "Chord estimate": "." if event.label == "N" else event.label,
                 "Start": f"{event.start_seconds:.2f}s",
                 "End": f"{event.end_seconds:.2f}s",
                 "Bar": bar,
@@ -1045,6 +1147,7 @@ def main() -> None:
         st.stop()
 
     _initialize_state()
+    _open_lesson_query(progressions)
     _render_navigation()
     page = st.session_state.page
     if page == "welcome":

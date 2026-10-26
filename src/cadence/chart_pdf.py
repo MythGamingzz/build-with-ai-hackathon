@@ -44,12 +44,13 @@ class _MeasureRow(Flowable):
             canvas.setFont("Helvetica", 7)
             canvas.drawString(x + 2, 25, f"Bar {bar.number}")
             canvas.setFillColor(colors.black)
-            canvas.setFont("Courier", 8)
-            canvas.drawString(x + 2, 8, "|")
-            canvas.drawRightString(x + measure_width - 2, 8, "|")
+            canvas.setStrokeColor(colors.HexColor("#bd8640"))
+            canvas.setLineWidth(1.5)
+            canvas.line(x + 3, 4, x + 3, 21)
+            canvas.line(x + measure_width - 3, 4, x + measure_width - 3, 21)
 
-            slot_left = x + 13
-            slot_width = (measure_width - 26) / self.beats_per_bar
+            slot_left = x + 12
+            slot_width = (measure_width - 24) / self.beats_per_bar
             for slot_index, slot in enumerate(
                 bar_beat_slots(bar, self.beats_per_bar)
             ):
@@ -140,6 +141,19 @@ def create_chart_pdf(data: ChartData) -> bytes:
         Paragraph(
             "Chord placements are experimental estimates, not verified sheet music. "
             "Confirm all chords and timing before performance.",
+            cell_style,
+        ),
+        Paragraph(
+            (
+                "No chord was predicted; empty beats are shown as dots and the full "
+                "recording duration is retained."
+                if data.chart_start_seconds is None
+                else (
+                    f"Bar 1 starts at the first predicted chord "
+                    f"({data.chart_start_seconds:.2f}s); any earlier no-chord intro "
+                    "is excluded."
+                )
+            ),
             cell_style,
         ),
         Spacer(1, 8),

@@ -145,8 +145,8 @@ Source: `scope.md > The Core Loop`, `What "Working" Looks Like`, `The POC Bounda
 Source: `scope.md > The Core Loop`, `What "Working" Looks Like`, `The POC Boundary`.
 
 - From the song-analysis result, the visitor can export a printable PDF chart.
-- Before export, show a direct bar-lines preview grouped by the visitor's sections, for example `| B . . . | F# . . . | E . D#m . |`. Put the bar number above each measure, show chord names at their estimated beat positions, use dots for empty beats, and do not put beat numbers beside chord names. An explicit **Update chart preview** action applies edited section ranges and recalculates bar placement and section-specific progression matches; do not present stale preview data as current.
-- Highlight the chord cells that form a unique section progression match and provide a link to that lesson. Do not highlight a weak, ambiguous, or unmatched sequence.
+- Before export, show a direct bar-lines preview grouped by the visitor's sections, for example `| B . . . | F# . . . | E . D#m . |`. Put the bar number above each measure, show chord names at their estimated beat positions, use dots for empty beats (including no-chord predictions), and do not put beat numbers beside chord names. Start bar 1 at the first predicted chord and exclude any earlier no-chord intro from the chart; if no chord is predicted, retain the full duration and show empty beats. An explicit **Update chart preview** action applies edited section ranges and recalculates bar placement and section-specific progression matches; do not present stale preview data as current.
+- Highlight the chord cells that form a unique section progression match. Hovering a highlighted chord reveals the progression name, pattern, key, and a clickable link to its lesson. Do not highlight or link a weak, ambiguous, or unmatched sequence.
 - Enable PDF download from the latest successfully updated preview. If the visitor changes chart inputs after previewing, ask them to update the preview before downloading.
 - The PDF includes the user-supplied song title, key, time signature, song section labels, numbered bars, and estimated chord placements in the same direct bar-lines format. Keep bar numbers separate from chord names, with dots marking empty beats.
 - Use corrected key, tempo, and time-signature values in the chart. Include tempo with the chart metadata because it determines bar alignment.
@@ -157,7 +157,7 @@ Source: `scope.md > The Core Loop`, `What "Working" Looks Like`, `The POC Bounda
 - [ ] A visitor can create and open or download a PDF from an analyzed song.
 - [ ] The on-screen chart preview groups numbered, pipe-delimited bars under the manually entered section ranges, places chord names on estimated beats, and uses dots for empty beats without adding beat numbers beside chords.
 - [ ] Clicking **Update chart preview** after editing metadata or sections recalculates the preview and per-section progression highlights; stale preview data is not presented as current.
-- [ ] A unique progression match is highlighted in the relevant section and opens its lesson; ambiguous/no matches remain unlinked.
+- [ ] A unique progression match is highlighted in the relevant section; hovering its chord shows the progression name/pattern/key and a clickable lesson link. Ambiguous/no matches remain unlinked.
 - [ ] PDF download uses the latest updated preview and is not offered while the preview is stale or invalid.
 - [ ] The printout shows title, key, time signature, tempo, song sections, bar numbers, beat markers, and chord labels in a readable layout.
 - [ ] The chart reflects user-corrected metadata and manually edited section labels.
@@ -171,6 +171,7 @@ Source: `scope.md > The Core Loop`, `What "Working" Looks Like`, `The POC Bounda
 - **Uncertain analysis:** Show the experimental-estimate warning in the app and exported chart.
 - **Uncertain metadata:** Mark key, tempo, and time signature as estimates and allow correction before export.
 - **No or ambiguous section match:** Keep chord estimates visible but do not highlight or link an unrelated databank entry.
+- **No-chord opening:** Start bar 1 at the first predicted chord and omit the preceding no-chord intro; if no chord is predicted anywhere, retain the recording duration and show dots.
 - **Stale chart preview:** Mark the preview as out of date after chart inputs change and require **Update chart preview** before PDF download.
 - **Missing title or section labels:** Prompt the visitor to provide a title; section labels may be left blank or edited before export.
 - **Analysis or PDF error:** Explain the failure and do not display fabricated results; retain any valid on-screen analysis if only export failed.

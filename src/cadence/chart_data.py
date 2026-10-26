@@ -47,8 +47,25 @@ class ChartData:
     tempo_bpm: float
     time_signature: str
     duration: float
+    chart_start_seconds: float | None
     beats_per_bar: int
     groups: tuple[ChartGroup, ...]
+
+
+def first_chord_start(
+    events: Sequence[ChordEvent],
+    duration: float,
+) -> float | None:
+    if not math.isfinite(duration) or duration <= 0:
+        raise ChartDataError("Song duration must be a positive finite number.")
+    return next(
+        (
+            event.start_seconds
+            for event in events
+            if event.label != "N" and 0 <= event.start_seconds < duration
+        ),
+        None,
+    )
 
 
 def bar_beat_slots(
@@ -61,6 +78,8 @@ def bar_beat_slots(
         raise ValueError("Beats per bar must be a positive whole number.")
     slots: list[list[ChartChord]] = [[] for _ in range(beats_per_bar)]
     for chord in bar.chords:
+        if chord.label == "N":
+            continue
         slot = min(
             beats_per_bar,
             max(1, math.floor(chord.beat + 0.5)),
@@ -145,24 +164,13 @@ def build_chart_data(
     events: Sequence[ChordEvent],
     sections: Sequence[SectionRange],
     progressions: tuple[Progression, ...],
-    first_beat_time: float = 0.0,
 ) -> ChartData:
     clean_title = title.strip()
     if not clean_title:
         raise ChartDataError("Enter a song title before updating the chart preview.")
     if not isinstance(key, str) or not key.strip():
         raise ChartDataError("Choose a key before updating the chart preview.")
-    if not math.isfinite(first_beat_time):
-        raise ChartDataError("The first beat must be a finite time value.")
-
-    bar_count = total_bar_count(duration, tempo_bpm, time_signature)
-    try:
-        beats_per_bar = int(time_signature.split("/", maxsplit=1)[0])
-    except (AttributeError, TypeError, ValueError) as exc:
-        raise ChartDataError(f"Unsupported time signature: {time_signature!r}.") from exc
-    valid_sections = _validate_sections(sections, bar_count)
-
-    event_positions: dict[int, tuple[int, float]] = {}
+    total_bar_count(duration, tempo_bpm, time_signature)
     for index, event in enumerate(events):
         if (
             not math.isfinite(event.start_seconds)
@@ -172,13 +180,25 @@ def build_chart_data(
             or not math.isfinite(event.score)
         ):
             raise ChartDataError(f"Chord event {index + 1} has invalid timing or score.")
-        if event.start_seconds >= duration:
+    chart_start = first_chord_start(events, duration)
+    chart_time_origin = chart_start if chart_start is not None else 0.0
+    chart_duration = duration - chart_time_origin
+    bar_count = total_bar_count(chart_duration, tempo_bpm, time_signature)
+    try:
+        beats_per_bar = int(time_signature.split("/", maxsplit=1)[0])
+    except (AttributeError, TypeError, ValueError) as exc:
+        raise ChartDataError(f"Unsupported time signature: {time_signature!r}.") from exc
+    valid_sections = _validate_sections(sections, bar_count)
+
+    event_positions: dict[int, tuple[int, float]] = {}
+    for index, event in enumerate(events):
+        if event.start_seconds < chart_time_origin or event.start_seconds >= duration:
             continue
         event_positions[index] = bar_beat_position(
             event.start_seconds,
             tempo_bpm,
             time_signature,
-            first_beat_time,
+            chart_time_origin,
         )
 
     assigned_bars: dict[int, SectionRange | None] = {
@@ -261,7 +281,8 @@ def build_chart_data(
         key=key.strip(),
         tempo_bpm=float(tempo_bpm),
         time_signature=time_signature,
-        duration=float(duration),
+        duration=float(chart_duration),
+        chart_start_seconds=chart_start,
         beats_per_bar=beats_per_bar,
         groups=tuple(groups),
     )
