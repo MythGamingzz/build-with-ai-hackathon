@@ -1,9 +1,13 @@
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Sequence
 
 from cadence.chord_model import ChordEvent
-from cadence.matching import ProgressionMatch, match_progression
+from cadence.matching import (
+    ProgressionCandidate,
+    ProgressionMatch,
+    match_progression,
+)
 from cadence.progression_data import Progression
 from cadence.song_metadata import bar_beat_position
 
@@ -236,18 +240,34 @@ def build_chart_data(
             for index, (bar, _) in event_positions.items()
             if section.start_bar <= bar <= section.end_bar
         ]
-        section_match = match_progression(
+        local_match = match_progression(
             [events[index].label for index in section_event_indices],
             progressions,
         )
-        highlighted_indices = (
-            {
-                section_event_indices[index]
-                for index in section_match.matched_event_indices
-            }
-            if section_match.progression is not None
-            else set()
+        candidates = tuple(
+            ProgressionCandidate(
+                progression=candidate.progression,
+                key=candidate.key,
+                matched_event_indices=tuple(
+                    section_event_indices[index]
+                    for index in candidate.matched_event_indices
+                ),
+            )
+            for candidate in local_match.candidates
         )
+        section_match = replace(
+            local_match,
+            matched_event_indices=tuple(
+                section_event_indices[index]
+                for index in local_match.matched_event_indices
+            ),
+            candidates=candidates,
+        )
+        highlighted_indices = {
+            index
+            for candidate in candidates
+            for index in candidate.matched_event_indices
+        }
         bars = tuple(
             ChartBar(
                 number=number,

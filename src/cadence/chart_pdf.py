@@ -17,8 +17,6 @@ from reportlab.platypus import (
 
 from cadence.chart_data import ChartBar, ChartData, ChartGroup, bar_beat_slots
 
-_MATCH_FILL = colors.HexColor("#f5dfad")
-
 
 class _MeasureRow(Flowable):
     def __init__(self, bars: tuple[ChartBar, ...], beats_per_bar: int) -> None:
@@ -58,18 +56,12 @@ class _MeasureRow(Flowable):
                     include_no_chord=True,
                 )
             ):
-                unique_labels: dict[str, bool] = {}
-                for chord in slot:
-                    if chord.label == "N":
-                        continue
-                    unique_labels[chord.label] = (
-                        unique_labels.get(chord.label, False) or chord.highlighted
+                labels = tuple(
+                    dict.fromkeys(
+                        chord.label for chord in slot if chord.label != "N"
                     )
-                if unique_labels:
-                    label = "/".join(unique_labels)
-                else:
-                    label = "."
-                highlighted = any(unique_labels.values())
+                )
+                label = "/".join(labels) if labels else "."
                 font_size = 8.0
                 label_width = stringWidth(label, "Courier", font_size)
                 while label_width > slot_width - 2 and font_size > 5.5:
@@ -77,17 +69,6 @@ class _MeasureRow(Flowable):
                     label_width = stringWidth(label, "Courier", font_size)
                 label_x = slot_left + slot_index * slot_width
                 center_x = label_x + slot_width / 2
-                if highlighted:
-                    canvas.setFillColor(_MATCH_FILL)
-                    canvas.roundRect(
-                        center_x - label_width / 2 - 2,
-                        5,
-                        label_width + 4,
-                        13,
-                        2,
-                        stroke=0,
-                        fill=1,
-                    )
                 canvas.setFillColor(colors.black)
                 canvas.setFont("Courier", font_size)
                 canvas.drawCentredString(center_x, 8, label)
@@ -183,7 +164,7 @@ def create_chart_pdf(data: ChartData) -> bytes:
                 Paragraph(
                     "Possible progression: "
                     f"{escape(progression.name)} in {escape(group.match.key or '')} "
-                    "(heuristic match; highlighted chords are suggestions).",
+                    "(heuristic match; verify against the audio).",
                     body_style,
                 )
             )

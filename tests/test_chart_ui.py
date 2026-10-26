@@ -3,8 +3,14 @@ from dataclasses import replace
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from app import _beat_cell_default, _matched_chord_html, _undo_chart_edits
+from app import (
+    _beat_cell_default,
+    _matched_chord_html,
+    _progression_color_map,
+    _undo_chart_edits,
+)
 from cadence.chart_data import ChartChord
+from cadence.matching import ProgressionCandidate
 from cadence.progression_data import load_progressions
 
 
@@ -32,8 +38,14 @@ class ChartUiTests(unittest.TestCase):
             for item in load_progressions()
             if item.id == "I-vi-IV-V"
         )
+        candidate = ProgressionCandidate(progression, "D", (0,))
 
-        markup = _matched_chord_html("B", progression, "D")
+        markup = _matched_chord_html(
+            "B",
+            (candidate,),
+            _progression_color_map(load_progressions()),
+            link_progression=progression,
+        )
 
         self.assertIn('class="chart-hover-match"', markup)
         self.assertIn("The familiar four-chord loop", markup)
@@ -50,8 +62,14 @@ class ChartUiTests(unittest.TestCase):
             next(iter(load_progressions())),
             name='<script>alert("x")</script>',
         )
+        candidate = ProgressionCandidate(progression, "C", (0,))
 
-        markup = _matched_chord_html("C", progression, "C")
+        markup = _matched_chord_html(
+            "C",
+            (candidate,),
+            _progression_color_map((progression,)),
+            link_progression=progression,
+        )
 
         self.assertNotIn("<script>", markup)
         self.assertIn("&lt;script&gt;", markup)
@@ -62,12 +80,50 @@ class ChartUiTests(unittest.TestCase):
             for item in load_progressions()
             if item.id == "I-vi-IV-V"
         )
+        candidate = ProgressionCandidate(progression, "D", (0,))
 
-        markup = _matched_chord_html("B", progression, "D")
+        markup = _matched_chord_html(
+            "B",
+            (candidate,),
+            _progression_color_map(load_progressions()),
+            link_progression=progression,
+        )
 
-        self.assertIn('class="chart-match">B</span>', markup)
+        self.assertIn(
+            'class="chart-match" style="background: #f4c56a;">B</span>',
+            markup,
+        )
         self.assertNotIn("B*", markup)
         self.assertNotIn("User-corrected chord.", markup)
+
+    def test_shared_match_uses_mixed_colors_and_lists_each_candidate(self) -> None:
+        progressions = load_progressions()
+        candidates = tuple(
+            ProgressionCandidate(
+                progression=progression,
+                key=key,
+                matched_event_indices=(0,),
+            )
+            for progression, key in zip(progressions[:2], ("C", "D"), strict=True)
+        )
+
+        markup = _matched_chord_html(
+            "C",
+            candidates,
+            _progression_color_map(progressions),
+        )
+
+        self.assertEqual(
+            len(set(_progression_color_map(progressions).values())),
+            len(progressions),
+        )
+        self.assertIn("linear-gradient(90deg", markup)
+        self.assertIn("Possible progressions", markup)
+        self.assertIn(candidates[0].progression.name, markup)
+        self.assertIn(candidates[1].progression.name, markup)
+        self.assertIn(" in C", markup)
+        self.assertIn(" in D", markup)
+        self.assertNotIn("?lesson=", markup)
 
     def test_undo_restores_original_beat_values_and_clears_feedback(self) -> None:
         state = SimpleNamespace(

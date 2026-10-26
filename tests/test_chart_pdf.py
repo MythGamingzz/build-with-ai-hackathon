@@ -1,9 +1,10 @@
 import re
 import unittest
+from unittest.mock import Mock
 
 from cadence.chord_model import ChordEvent
-from cadence.chart_data import SectionRange, build_chart_data
-from cadence.chart_pdf import create_chart_pdf
+from cadence.chart_data import ChartBar, ChartChord, SectionRange, build_chart_data
+from cadence.chart_pdf import _MeasureRow, create_chart_pdf
 from cadence.progression_data import load_progressions
 
 
@@ -60,6 +61,54 @@ class ChartPdfTests(unittest.TestCase):
         self.assertIn(b"G", pdf_bytes)
         self.assertNotIn(b"G*", pdf_bytes)
         self.assertNotIn(b"* marks a user-corrected chord label", pdf_bytes)
+
+    def test_progression_matches_do_not_highlight_the_printed_chart(self) -> None:
+        bar = ChartBar(
+            1,
+            (
+                ChartChord(
+                    beat=1.0,
+                    label="C",
+                    score=0.9,
+                    highlighted=True,
+                    event_index=0,
+                ),
+            ),
+        )
+        measure_row = _MeasureRow((bar,), beats_per_bar=4)
+        measure_row.width = 100
+        measure_row.canv = Mock()
+
+        measure_row.draw()
+
+        measure_row.canv.roundRect.assert_not_called()
+
+    def test_progression_note_does_not_claim_the_pdf_has_highlights(self) -> None:
+        progression = next(
+            item
+            for item in self.progressions
+            if item.roman_numerals == ("I", "vi", "IV", "V")
+        )
+        chords = ("C", "Am", "F", "G")
+        chart = build_chart_data(
+            title="Progression chart",
+            key="C major",
+            tempo_bpm=120.0,
+            time_signature="4/4",
+            duration=8.0,
+            events=tuple(
+                ChordEvent(float(index * 2), float((index + 1) * 2), label, 0.9)
+                for index, label in enumerate(chords)
+            ),
+            sections=(SectionRange("Verse", 1, 4),),
+            progressions=(progression,),
+        )
+
+        pdf_bytes = create_chart_pdf(chart)
+
+        self.assertIn(b"Possible progression", pdf_bytes)
+        self.assertIn(b"verify against the audio", pdf_bytes)
+        self.assertNotIn(b"highlighted chords", pdf_bytes)
 
     def test_fixed_chart_origin_is_explained_after_beat_edits(self) -> None:
         chart = build_chart_data(

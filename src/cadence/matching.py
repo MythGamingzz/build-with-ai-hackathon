@@ -9,12 +9,20 @@ _CHORD_LABEL = re.compile(r"^([A-G][#b]?)(m|aug)?$")
 
 
 @dataclass(frozen=True)
+class ProgressionCandidate:
+    progression: Progression
+    key: str
+    matched_event_indices: tuple[int, ...]
+
+
+@dataclass(frozen=True)
 class ProgressionMatch:
     progression: Progression | None
     key: str | None
     ambiguous: bool
     candidate_names: tuple[str, ...]
     matched_event_indices: tuple[int, ...] = ()
+    candidates: tuple[ProgressionCandidate, ...] = ()
 
 
 def _chord_signature(label: str) -> tuple[int, str] | None:
@@ -89,16 +97,39 @@ def match_progression(
     if not matches:
         return ProgressionMatch(None, None, False, ())
     if len(matches) > 1:
+        candidates = tuple(
+            ProgressionCandidate(
+                progression=progression,
+                key=key,
+                matched_event_indices=tuple(sorted(matched_event_indices)),
+            )
+            for progression, key, matched_event_indices in sorted(
+                matches.values(),
+                key=lambda item: (item[0].id, item[1]),
+            )
+        )
         candidate_names = tuple(
             sorted({progression.name for progression, _, _ in matches.values()})
         )
-        return ProgressionMatch(None, None, True, candidate_names)
+        return ProgressionMatch(
+            None,
+            None,
+            True,
+            candidate_names,
+            candidates=candidates,
+        )
 
     progression, key, matched_event_indices = next(iter(matches.values()))
+    candidate = ProgressionCandidate(
+        progression=progression,
+        key=key,
+        matched_event_indices=tuple(sorted(matched_event_indices)),
+    )
     return ProgressionMatch(
         progression,
         key,
         False,
         (progression.name,),
-        tuple(sorted(matched_event_indices)),
+        candidate.matched_event_indices,
+        (candidate,),
     )

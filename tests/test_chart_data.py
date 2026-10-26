@@ -1,4 +1,5 @@
 import unittest
+from dataclasses import replace
 
 from cadence.chord_model import ChordEvent
 from cadence.chart_data import (
@@ -96,6 +97,46 @@ class ChartDataTests(unittest.TestCase):
             [chord.symbol for chord in chords],
         )
         self.assertEqual([bar.number for bar in chart.groups[1].bars], [5])
+
+    def test_ambiguous_section_match_highlights_every_candidate_position(self) -> None:
+        duplicate = replace(
+            self.target,
+            id="duplicate-pattern",
+            name="Duplicate pattern",
+        )
+        chords = spell_progression(
+            self.target.degrees,
+            "C",
+            self.target.qualities,
+        )
+        events = self._events([chord.symbol for chord in chords])
+
+        chart = build_chart_data(
+            title="Ambiguous progression",
+            key="C major",
+            tempo_bpm=120.0,
+            time_signature="4/4",
+            duration=10.0,
+            events=events,
+            sections=(SectionRange("Verse", 1, 4),),
+            progressions=self.progressions + (duplicate,),
+        )
+
+        verse = chart.groups[0]
+        self.assertTrue(verse.match.ambiguous)
+        candidate_indices = {
+            index
+            for candidate in verse.match.candidates
+            for index in candidate.matched_event_indices
+        }
+        highlighted_indices = {
+            chord.event_index
+            for bar in verse.bars
+            for chord in bar.chords
+            if chord.highlighted
+        }
+        self.assertEqual(highlighted_indices, candidate_indices)
+        self.assertTrue(candidate_indices)
 
     def test_progression_cannot_match_across_confirmed_sections(self) -> None:
         chords = spell_progression(

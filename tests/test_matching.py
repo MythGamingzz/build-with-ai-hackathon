@@ -33,6 +33,10 @@ class ProgressionMatchingTests(unittest.TestCase):
         self.assertEqual(match.key, "D")
         self.assertFalse(match.ambiguous)
         self.assertEqual(match.matched_event_indices, (1, 2, 3, 4, 5))
+        self.assertEqual(
+            match.candidates[0].matched_event_indices,
+            match.matched_event_indices,
+        )
 
     def test_match_positions_include_repeated_chord_events(self) -> None:
         chords = spell_progression(
@@ -71,6 +75,18 @@ class ProgressionMatchingTests(unittest.TestCase):
         self.assertTrue(match.ambiguous)
         self.assertIn(self.target.name, match.candidate_names)
         self.assertIn("Duplicate pattern", match.candidate_names)
+        target_candidate = next(
+            candidate
+            for candidate in match.candidates
+            if candidate.progression is self.target and candidate.key == "C"
+        )
+        duplicate_candidate = next(
+            candidate
+            for candidate in match.candidates
+            if candidate.progression is duplicate and candidate.key == "C"
+        )
+        self.assertEqual(target_candidate.matched_event_indices, (0, 1, 2, 3))
+        self.assertEqual(duplicate_candidate.matched_event_indices, (0, 1, 2, 3))
 
     def test_returns_no_match_for_an_unrelated_short_sequence(self) -> None:
         match = match_progression(["C"], self.progressions)
@@ -78,6 +94,7 @@ class ProgressionMatchingTests(unittest.TestCase):
         self.assertIsNone(match.progression)
         self.assertFalse(match.ambiguous)
         self.assertEqual(match.candidate_names, ())
+        self.assertEqual(match.candidates, ())
 
 
 if __name__ == "__main__":

@@ -32,6 +32,7 @@ from cadence.chart_editing import (
 )
 from cadence.chart_pdf import create_chart_pdf
 from cadence.feedback import FeedbackSaveError, save_feedback_example
+from cadence.matching import ProgressionCandidate
 from cadence.progression_data import (
     FREQUENCY_GROUPS,
     Progression,
@@ -56,6 +57,21 @@ _FREQUENCY_STYLES = {
 }
 _CIRCLE_OF_FIFTHS = ("C", "G", "D", "A", "E", "B", "F#", "C#", "G#", "D#", "A#", "F")
 _CIRCLE_OF_FOURTHS = ("C", "F", "Bb", "Eb", "Ab", "Db", "Gb", "B", "E", "A", "D", "G")
+_PROGRESSION_HIGHLIGHT_COLORS = (
+    "#f4c56a",
+    "#80c8ed",
+    "#93d6a6",
+    "#f29c9c",
+    "#c2a5e8",
+    "#f3a9cf",
+    "#7ed7d2",
+    "#f4ae73",
+    "#d3d878",
+    "#a2b8f5",
+    "#dca2b9",
+    "#c5b28e",
+    "#91c2ae",
+)
 
 
 def _keyboard_svg(scale_notes: tuple[str, ...] | None = None) -> str:
@@ -285,8 +301,8 @@ def _apply_styles() -> None:
             white-space: nowrap;
         }
         .chart-measure-content .chart-match {
-            background: #d9a85f;
             border-radius: 0.3rem;
+            border: 1px solid #211f1b;
             color: #211f1b;
             display: inline-block;
             font-weight: 700;
@@ -318,13 +334,27 @@ def _apply_styles() -> None:
             font-family: sans-serif;
             font-size: 0.8rem;
             left: 50%;
+            max-height: 16rem;
             min-width: 12rem;
+            overflow-y: auto;
             padding: 0.55rem 0.7rem;
             position: absolute;
             top: 100%;
             transform: translateX(-50%);
             white-space: normal;
             z-index: 1000;
+        }
+        .chart-tooltip-candidate {
+            align-items: center;
+            display: flex;
+            gap: 0.4rem;
+            margin: 0.2rem 0;
+        }
+        .chart-tooltip-swatch {
+            border: 1px solid #211f1b;
+            border-radius: 0.15rem;
+            flex: 0 0 0.8rem;
+            height: 0.8rem;
         }
         .chart-hover-match:hover .chart-tooltip,
         .chart-hover-match:focus-within .chart-tooltip {
@@ -880,26 +910,72 @@ def _chart_layout_signature(result: SongAnalysis) -> str:
 
 def _matched_chord_html(
     label: str,
-    progression: Progression,
-    key: str,
+    candidates: tuple[ProgressionCandidate, ...],
+    progression_colors: dict[str, str],
+    link_progression: Progression | None = None,
 ) -> str:
-    lesson_link = f"?lesson={quote(progression.id, safe='')}"
-    match_details = (
-        f"{progression.name} ({progression.pattern}) in {key}"
+    candidate_details = tuple(
+        f"{candidate.progression.name} "
+        f"({candidate.progression.pattern}) in {candidate.key}"
+        for candidate in candidates
     )
     accessible_label = (
-        f"{label}, "
-        f"possible match {match_details}, open progression lesson"
+        f"{label}, possible progressions: {'; '.join(candidate_details)}"
     )
+    candidate_colors = tuple(
+        dict.fromkeys(
+            progression_colors[candidate.progression.id]
+            for candidate in candidates
+        )
+    )
+    if len(candidate_colors) == 1:
+        background = candidate_colors[0]
+    else:
+        segment_size = 100 / len(candidate_colors)
+        stops = ", ".join(
+            f"{color} {index * segment_size:g}% "
+            f"{(index + 1) * segment_size:g}%"
+            for index, color in enumerate(candidate_colors)
+        )
+        background = f"linear-gradient(90deg, {stops})"
+    chord_markup = (
+        '<span class="chart-match" '
+        f'style="background: {escape(background)};">{escape(label)}</span>'
+    )
+    if link_progression is not None:
+        lesson_link = f"?lesson={quote(link_progression.id, safe='')}"
+        chord_markup = (
+            f'<a class="chart-match-link" href="{lesson_link}" '
+            f'aria-label="{escape(accessible_label)}, open progression lesson">'
+            f"{chord_markup}</a>"
+        )
+    candidate_rows = "".join(
+        '<div class="chart-tooltip-candidate">'
+        f'<span class="chart-tooltip-swatch" '
+        f'style="background-color: {progression_colors[candidate.progression.id]};">'
+        "</span>"
+        f"<span>{escape(details)}</span></div>"
+        for candidate, details in zip(candidates, candidate_details, strict=True)
+    )
+    tooltip_heading = (
+        "Possible progression"
+        if len(candidates) == 1
+        else "Possible progressions"
+    )
+    tooltip_link = ""
+    if link_progression is not None:
+        lesson_link = f"?lesson={quote(link_progression.id, safe='')}"
+        tooltip_link = (
+            f'<a href="{lesson_link}">Open progression lesson</a>'
+        )
     return (
         '<span class="chart-hover-match" tabindex="0" '
         f'aria-label="{escape(accessible_label)}">'
-        f'<a class="chart-match-link" href="{lesson_link}" '
-        f'aria-label="{escape(accessible_label)}">'
-        f'<span class="chart-match">{escape(label)}</span></a>'
+        f"{chord_markup}"
         '<span class="chart-tooltip" role="tooltip">'
-        f"<strong>{escape(match_details)}</strong><br/>"
-        f'<a href="{lesson_link}">Open progression lesson</a>'
+        f"<strong>{tooltip_heading}</strong>"
+        f"{candidate_rows}"
+        f"{tooltip_link}"
         "</span></span>"
     )
 
@@ -913,10 +989,22 @@ def _beat_cell_default(slot: tuple[ChartChord, ...]) -> str:
     return "N" if any(chord.label == "N" for chord in slot) else "."
 
 
+def _progression_color_map(
+    progressions: tuple[Progression, ...],
+) -> dict[str, str]:
+    return {
+        progression.id: _PROGRESSION_HIGHLIGHT_COLORS[
+            index % len(_PROGRESSION_HIGHLIGHT_COLORS)
+        ]
+        for index, progression in enumerate(progressions)
+    }
+
+
 def _render_chart_group(
     chart: ChartData,
     group: ChartGroup,
-    show_lesson_link: bool,
+    show_match_highlights: bool,
+    progression_colors: dict[str, str],
     edit_mode: bool = False,
 ) -> None:
     if not group.bars:
@@ -930,9 +1018,20 @@ def _render_chart_group(
         )
     elif group.match is not None and group.match.ambiguous:
         st.info(
-            f"Several starter patterns could fit {group.name}: "
-            f"{', '.join(group.match.candidate_names)}. No lesson link is selected."
+            f"Possible progressions could fit {group.name}. Hover over colored "
+            "chords to see which patterns they could belong to."
         )
+
+    candidates_by_event: dict[
+        int,
+        dict[tuple[str, str], ProgressionCandidate],
+    ] = {}
+    if show_match_highlights and group.match is not None:
+        for candidate in group.match.candidates:
+            for event_index in candidate.matched_event_indices:
+                candidates_by_event.setdefault(event_index, {})[
+                    (candidate.progression.id, candidate.key)
+                ] = candidate
 
     for row_start in range(0, len(group.bars), 4):
         bars = group.bars[row_start : row_start + 4]
@@ -992,30 +1091,34 @@ def _render_chart_group(
                 if not slot:
                     beat_html.append('<span class="chart-chord">.</span>')
                     continue
-                labels: dict[str, bool] = {}
+                labels: dict[
+                    str,
+                    dict[tuple[str, str], ProgressionCandidate],
+                ] = {}
                 for chord in slot:
                     if chord.label == "N":
                         continue
-                    previous = labels.get(chord.label, False)
-                    labels[chord.label] = previous or (
-                        chord.highlighted and show_lesson_link
+                    labels.setdefault(chord.label, {}).update(
+                        candidates_by_event.get(chord.event_index, {})
                     )
                 if not labels:
                     beat_html.append('<span class="chart-chord">.</span>')
                     continue
-                progression = (
-                    group.match.progression
-                    if group.match is not None
-                    else None
-                )
                 rendered_labels = []
-                for label, highlighted in labels.items():
-                    if highlighted and progression is not None and show_lesson_link:
+                for label, candidate_map in labels.items():
+                    candidates = tuple(candidate_map.values())
+                    if candidates:
+                        link_progression = (
+                            group.match.progression
+                            if group.match is not None
+                            else None
+                        )
                         rendered_labels.append(
                             _matched_chord_html(
                                 label,
-                                progression,
-                                group.match.key or "",
+                                candidates,
+                                progression_colors,
+                                link_progression=link_progression,
                             )
                         )
                     else:
@@ -1177,11 +1280,13 @@ def _render_chart_preview(result: SongAnalysis, progressions: tuple[Progression,
             f"({preview.chart_start_seconds:.2f}s); any earlier no-chord intro "
             "is excluded."
         )
+    progression_colors = _progression_color_map(progressions)
     for group in preview.groups:
         _render_chart_group(
             preview,
             group,
-            show_lesson_link=preview_is_current,
+            show_match_highlights=preview_is_current,
+            progression_colors=progression_colors,
             edit_mode=st.session_state.analysis_edit_mode,
         )
 
