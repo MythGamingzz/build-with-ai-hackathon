@@ -93,46 +93,78 @@ def _meter_estimate(
     if tempo_bpm is None or not beat_times:
         return "4/4", 0.0
 
-    eighth_seconds = 30.0 / tempo_bpm
-    first_beat = beat_times[0]
-    sample_times = np.arange(first_beat, duration, eighth_seconds)
+    median_beat_interval = (
+        float(np.median(np.diff(beat_times))) if len(beat_times) > 1 else 0.0
+    )
+    pulse_based = (
+        tempo_bpm > 150
+        and median_beat_interval > 0
+        and abs(median_beat_interval - 60.0 / tempo_bpm)
+        <= 0.1 * (60.0 / tempo_bpm)
+    )
+    if pulse_based:
+        sample_times = np.asarray(
+            [time for time in beat_times if time < duration],
+            dtype=np.float64,
+        )
+        meter_layouts = {
+            "3/4": (3, (0, 1, 2)),
+            "4/4": (4, (0, 1, 2, 3)),
+            "6/8": (6, (0, 3)),
+        }
+    else:
+        eighth_seconds = 30.0 / tempo_bpm
+        first_beat = beat_times[0]
+        sample_times = np.arange(first_beat, duration, eighth_seconds)
+        meter_layouts = {
+            "3/4": (6, (0, 2, 4)),
+            "4/4": (8, (0, 2, 4, 6)),
+            "6/8": (6, (0, 3)),
+        }
     if sample_times.size < 12:
         return "4/4", 0.0
 
     frame_times = np.arange(rms.size) * HOP_LENGTH / SAMPLE_RATE
     accents = np.interp(sample_times, frame_times, rms)
-    meter_layouts = {
-        "3/4": (6, (0, 2, 4)),
-        "4/4": (8, (0, 2, 4, 6)),
-        "6/8": (6, (0, 3)),
-    }
     scores = []
     for signature, (subdivisions, strong_positions) in meter_layouts.items():
-        full_bars = accents.size // subdivisions
-        if full_bars < 2:
+        phase_scores = []
+        for phase in range(subdivisions):
+            phased_accents = accents[phase:]
+            full_bars = phased_accents.size // subdivisions
+            if full_bars < 2:
+                continue
+            bar_values = phased_accents[: full_bars * subdivisions].reshape(
+                full_bars, subdivisions
+            )
+            maximum = max(float(np.max(bar_values)), 1e-9)
+            downbeat = float(np.mean(bar_values[:, 0]))
+            other_subdivisions = float(np.mean(bar_values[:, 1:]))
+            downbeat_score = (downbeat - other_subdivisions) / maximum
+            strong = float(np.mean(bar_values[:, strong_positions]))
+            weak_positions = tuple(
+                position
+                for position in range(subdivisions)
+                if position not in strong_positions
+            )
+            weak = (
+                float(np.mean(bar_values[:, weak_positions]))
+                if weak_positions
+                else strong
+            )
+            pulse_score = (strong - weak) / maximum
+            phase_scores.append(0.5 * (downbeat_score + pulse_score))
+        if not phase_scores:
             scores.append((signature, float("-inf")))
             continue
-        bar_values = accents[: full_bars * subdivisions].reshape(
-            full_bars, subdivisions
-        )
-        strong = np.mean(bar_values[:, strong_positions])
-        weak_positions = tuple(
-            position
-            for position in range(subdivisions)
-            if position not in strong_positions
-        )
-        weak = np.mean(bar_values[:, weak_positions])
-        scores.append(
-            (
-                signature,
-                float((strong - weak) / max(float(np.max(bar_values)), 1e-9)),
-            )
-        )
+        scores.append((signature, max(phase_scores)))
 
     scores.sort(key=lambda item: item[1], reverse=True)
     if not np.isfinite(scores[0][1]):
         return "4/4", 0.0
     margin = scores[0][1] - scores[1][1]
+    if margin < (0.02 if pulse_based else 0.05):
+        return "4/4", max(0.0, min(1.0, float(margin)))
     return scores[0][0], max(0.0, min(1.0, float(margin)))
 
 
@@ -152,6 +184,15 @@ def estimate_song_metadata(
         tempo,
         beat_times,
     )
+    if (
+        meter == "6/8"
+        and tempo is not None
+        and tempo > 150
+        and len(beat_times) > 1
+        and abs(float(np.median(np.diff(beat_times))) - 60.0 / tempo)
+        <= 0.1 * (60.0 / tempo)
+    ):
+        tempo /= 2.0
     return SongMetadataEstimate(
         key=key,
         key_strength=key_strength,

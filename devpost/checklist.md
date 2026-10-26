@@ -57,7 +57,10 @@ Build mode: fast
 
 ## Final Review
 
-- [ ] Remove the duplicate white bar glyphs, render all `N` spans as dots, anchor bar 1 at the first predicted chord (excluding any earlier intro), and add clickable progression details on hover; verify the preview and PDF stay consistent.
+- [ ] Remove the duplicate white bar glyphs, render all `N` spans as dots, anchor bar 1 at the first predicted chord (excluding any earlier intro), and make each matched chord directly clickable to its lesson while retaining hover details; verify the preview and PDF stay consistent.
+- [ ] Fix low-confidence meter ties to fall back to 4/4; verify synthetic 4/4 detection and review an authorized 4/4 recording.
+- [ ] Replace dropdown chord editing with typed beat cells, including empty beats; accept supported chord symbols plus `N`/`.` for no chord; show invalid entries clearly; verify a chord can be moved across a bar boundary and matches/PDF use the updated beat cells.
+- [ ] Add explicit rights-confirmed local saving of corrected audio intervals for owner review; verify default training ignores feedback and the opt-in training command accepts only feedback IDs assigned to the training split.
 - [ ] Final review complete — feedback resolved and learner confirms the prototype is ready to share using only rights-cleared demo audio
 
 ## Code Tour and App Map
@@ -85,3 +88,5 @@ Activity mode: Not started.
 - Refined Slice 4 from hands-on feedback — use one section-aware chart model for a refreshable bar/beat preview, per-section progression highlights and lesson links, and the downloadable PDF; prevent stale previews from being exported.
 - Final review feedback — replace the table preview with pipe-delimited bar notation, use dots for empty beats, and remove beat numbers beside chord names; keep measure numbers in a separate label above each bar.
 - Final review follow-up — remove duplicate bar glyphs, display no-chord events as dots, anchor the chart at the first predicted chord, and link unique progression details from the chord hover.
+- Final review revision — make matched chord labels themselves clickable, prefer an explicit low-confidence 4/4 meter fallback over a 3/4 tie, add in-preview chord relabeling, and allow only explicit rights-cleared local feedback to be reviewed and added to training through a separate owner command. Preserve the held-out-song split and do not retrain automatically.
+- Final review revision — the learner found dropdown chord editing awkward and asked for one text field per beat. Implement typed beat cells with `N`/`.` no-chord values and visible validation; changed cells use confirmed beat-start intervals for the chart and opt-in feedback. Demo 1's bar-5 reference places E at 14.333s (bar 6); the model recognizes E at 14.164s but reports it about 0.169s early while estimating 89.1 BPM. The references already train chord classification, so do not claim retraining alone will fix bar placement or overwrite the saved model without measured timing evaluation.

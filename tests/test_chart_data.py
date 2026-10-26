@@ -6,6 +6,7 @@ from cadence.chart_data import (
     ChartDataError,
     SectionRange,
     build_chart_data,
+    bar_beat_slots,
     format_bar_measure,
 )
 from cadence.progression_data import load_progressions
@@ -160,6 +161,48 @@ class ChartDataTests(unittest.TestCase):
             format_bar_measure(chart.groups[0].bars[0], 4),
             "| . . . . |",
         )
+
+    def test_chart_cells_keep_event_indices_for_direct_chord_editing(self) -> None:
+        chart = self._build(
+            duration=8.0,
+            events=(
+                ChordEvent(0.0, 1.0, "C", 0.8),
+                ChordEvent(1.0, 2.0, "N", 0.0),
+                ChordEvent(2.0, 3.0, "G", 0.7),
+            ),
+            sections=(SectionRange("Verse", 1, 4),),
+        )
+        bar = chart.groups[0].bars[0]
+
+        visible_slots = bar_beat_slots(bar, 4)
+        editable_slots = bar_beat_slots(bar, 4, include_no_chord=True)
+
+        self.assertEqual(visible_slots[0][0].event_index, 0)
+        self.assertEqual(visible_slots[2], ())
+        self.assertEqual(editable_slots[2][0].event_index, 1)
+        self.assertEqual(editable_slots[2][0].label, "N")
+        self.assertEqual(chart.groups[0].bars[1].chords[0].event_index, 2)
+
+    def test_corrected_event_indices_are_retained_in_chart_data(self) -> None:
+        chart = build_chart_data(
+            title="Practice song",
+            key="C major",
+            tempo_bpm=120.0,
+            time_signature="4/4",
+            duration=4.0,
+            events=self._events(["C", "G"]),
+            sections=(SectionRange("Verse", 1, 2),),
+            progressions=self.progressions,
+            corrected_event_indices=frozenset({1}),
+        )
+
+        chords = [
+            chord
+            for bar in chart.groups[0].bars
+            for chord in bar.chords
+        ]
+
+        self.assertEqual([chord.is_user_corrected for chord in chords], [False, True])
 
     def test_rejects_overlapping_section_ranges(self) -> None:
         with self.assertRaisesRegex(ChartDataError, "overlaps"):

@@ -15,8 +15,9 @@ Source: `scope.md > The Unique Kernel`, `Who It's For`.
 3. The visitor explores the progression databank, searches or filters its curated patterns, and opens a lesson to hear and understand one.
 4. The visitor can choose a local song they are authorized to analyze. Cadence uses the already-trained model; visitors do not need the training examples and do not need to train the model themselves.
 5. Cadence shows estimated chord labels and estimates the song's key, tempo, and time signature. The visitor can correct those estimates, enter a song title, and mark or edit verse/chorus/bridge sections.
-6. The visitor reviews a bar-by-bar chart, with chord placements on beats and beat markers shown as dots, then exports a printable PDF containing the title, key, time signature, song sections, and chord chart. Estimated results remain visibly uncertain in the app and PDF.
-7. If the chord estimates resemble a catalog progression, the visitor can open that lesson. A weak or unmatched estimate remains unlinked.
+6. The visitor can open chord-edit mode directly from the bar preview and type a chord symbol into any beat cell, including an empty one. `N` and `.` mean no chord. Updating a cell places that correction at the beat's start, so a misplaced chord can be moved by clearing its old beat and entering it in the intended beat. Updated matches and PDF output use the corrected cells, which remain visibly distinguished from model estimates.
+7. The visitor reviews the corrected bar-by-bar chart, with chord placements on beats and beat markers shown as dots, then exports a printable PDF containing the title, key, time signature, song sections, and chord chart. Estimated results remain visibly uncertain in the app and PDF.
+8. If the chord estimates resemble a catalog progression, the highlighted chord itself links to that lesson. A weak or unmatched estimate remains unlinked. With a separate explicit rights confirmation, the visitor may save the recording and corrected intervals locally for owner review and a later manual training run.
 
 Cadence demonstrates an educational databank and a small, honest model-training experiment. It does not promise that the model will correctly transcribe unfamiliar songs.
 
@@ -26,7 +27,7 @@ Cadence demonstrates an educational databank and a small, honest model-training 
 - **Beginner tutorial:** A skippable, step-by-step primer: introduce W–W–H–W–W–W–H before showing scales; compare unhighlighted piano keys with C-major highlights; compare C major and D major; show the seven diatonic chord qualities; then teach the circles of fifths and fourths in separate steps. Visitors can move forward or back. The final step has one clear finish action rather than a skip action.
 - **Progression databank:** Search and frequency filter above a compact grid of progression cards.
 - **Progression lesson:** A selected progression's explanation, relevant theory diagram, chord spellings, and playable example.
-- **Song analysis and chart preview:** Local audio selection, chord estimates, estimated key/tempo/time signature, editable song title and section labels, controls to correct musical metadata, and a preview of the bar/beat chart before PDF export.
+- **Song analysis and chart preview:** Local audio selection, chord estimates, estimated key/tempo/time signature, editable song title and section labels, controls to correct musical metadata and chord labels directly in the bar/beat chart, and a preview before PDF export. A clearly separate, explicit action saves rights-cleared audio and corrected intervals locally for later owner review; it does not retrain the model.
 - **Training and evaluation demonstration:** A project-owner step shown before or during the demo: run training on the prepared, chord-labeled original recordings and show the held-out evaluation. The public app uses the resulting pre-trained model; visitors are not asked to train it.
 
 ## Look and Feel
@@ -126,7 +127,11 @@ Source: `scope.md > The Core Loop`, `What "Working" Looks Like`, `The POC Bounda
 - The visitor chooses a local audio file they are authorized to analyze. The app does not accept streaming links or download music.
 - Complete songs and full-band recordings are allowed; instrument separation is not required.
 - Use the pre-trained model to show estimated chord labels and spans. Also estimate key, tempo, and time signature for the chart.
+- Show 4/4 as the low-confidence fallback meter rather than selecting 3/4 from a tie; still label the meter as an estimate and let the visitor correct it.
 - Label these estimates clearly and let the visitor correct key, tempo, and time signature before making the chart.
+- Offer an **Edit chords** control at the chart preview. In edit mode, show a text field for every beat, including empty beats. Accept supported chord symbols; `N` or `.` means no chord. A correction is placed at that beat's start and can move a chord across a beat or bar boundary by editing both cells. Reject invalid values with a visible, actionable error. The chart must distinguish edited cells from untouched estimates.
+- The refreshed chart must calculate section progression matches from the corrected chord labels, and the PDF must use those same corrections. Chord edits invalidate the previous preview until the visitor updates it.
+- A separate save action is available only when there are chord corrections and the visitor explicitly confirms they have rights to use the recording as local training data. It saves the source audio and changed intervals under the ignored local feedback folder; it does not upload audio or retrain automatically.
 - The visitor supplies the song title and can mark or edit section names and bar ranges such as verse, chorus, and bridge. Cadence does not automatically identify song sections in this POC.
 - After the visitor updates the chart preview, compare chord patterns within each confirmed section. Highlight a unique plausible progression match in that section and let the visitor open its databank lesson. Keep unmatched or ambiguous estimates visible without highlighting an unrelated entry or forcing a lesson link.
 - An unreadable, unsupported, or failed analysis shows an actionable error, not fabricated results.
@@ -136,9 +141,13 @@ Source: `scope.md > The Core Loop`, `What "Working" Looks Like`, `The POC Bounda
 - [ ] The result view visibly labels chord, key, tempo, and time-signature output as estimates.
 - [ ] The visitor can correct the key, tempo, and time signature and enter a song title before export.
 - [ ] The visitor can add or edit section labels; the app does not claim to detect verse/chorus structure automatically.
+- [ ] The visitor can edit predicted chord labels from the bar preview; changing labels marks the preview stale, and the updated preview, lesson matches, and PDF consistently reflect those edits.
+- [ ] No-feedback, missing-consent, and unsupported-audio cases cannot save training examples. Rights-cleared opt-in examples are stored locally and are not included in the public repository.
 - [ ] A unique progression match within a confirmed section is highlighted and links to its corresponding databank lesson; unmatched or ambiguous estimates have no misleading lesson link.
 - [ ] An unsupported or unreadable file produces a clear error and no success-shaped result.
 - [ ] The app reminds visitors to use audio they are authorized to analyze.
+- [ ] A flat/ambiguous meter signal falls back to 4/4 with low confidence rather than returning 3/4 solely because of candidate order; clear synthetic 4/4 accents are detected as 4/4.
+- [ ] Saving training feedback requires an explicit rights confirmation and corrected labels, writes audio plus only the manually corrected intervals to the ignored local feedback folder, and never triggers a model update.
 
 ### Exporting a performance chart
 
@@ -146,7 +155,8 @@ Source: `scope.md > The Core Loop`, `What "Working" Looks Like`, `The POC Bounda
 
 - From the song-analysis result, the visitor can export a printable PDF chart.
 - Before export, show a direct bar-lines preview grouped by the visitor's sections, for example `| B . . . | F# . . . | E . D#m . |`. Put the bar number above each measure, show chord names at their estimated beat positions, use dots for empty beats (including no-chord predictions), and do not put beat numbers beside chord names. Start bar 1 at the first predicted chord and exclude any earlier no-chord intro from the chart; if no chord is predicted, retain the full duration and show empty beats. An explicit **Update chart preview** action applies edited section ranges and recalculates bar placement and section-specific progression matches; do not present stale preview data as current.
-- Highlight the chord cells that form a unique section progression match. Hovering a highlighted chord reveals the progression name, pattern, key, and a clickable link to its lesson. Do not highlight or link a weak, ambiguous, or unmatched sequence.
+- Highlight the chord cells that form a unique section progression match. The highlighted chord itself is directly clickable to its lesson; hovering also reveals the progression name, pattern, and key. Do not highlight or link a weak, ambiguous, or unmatched sequence.
+- In chord-edit mode, a text input appears for every beat cell, including empty beats. The visitor can enter a supported chord symbol or `N`/`.` for no chord; a changed cell is placed at the start of its beat. Invalid and empty values show an actionable error when updating. Applying an edit makes the preview stale; updating recalculates progression matches. Untouched predictions remain marked as estimates and user corrections are identified separately.
 - Enable PDF download from the latest successfully updated preview. If the visitor changes chart inputs after previewing, ask them to update the preview before downloading.
 - The PDF includes the user-supplied song title, key, time signature, song section labels, numbered bars, and estimated chord placements in the same direct bar-lines format. Keep bar numbers separate from chord names, with dots marking empty beats.
 - Use corrected key, tempo, and time-signature values in the chart. Include tempo with the chart metadata because it determines bar alignment.
@@ -158,6 +168,9 @@ Source: `scope.md > The Core Loop`, `What "Working" Looks Like`, `The POC Bounda
 - [ ] The on-screen chart preview groups numbered, pipe-delimited bars under the manually entered section ranges, places chord names on estimated beats, and uses dots for empty beats without adding beat numbers beside chords.
 - [ ] Clicking **Update chart preview** after editing metadata or sections recalculates the preview and per-section progression highlights; stale preview data is not presented as current.
 - [ ] A unique progression match is highlighted in the relevant section; hovering its chord shows the progression name/pattern/key and a clickable lesson link. Ambiguous/no matches remain unlinked.
+- [ ] Clicking a highlighted chord in the preview opens its corresponding lesson directly; the link is not confined to the hover card.
+- [ ] Chord edit mode provides one text input for every beat, including empty beats; accepts supported chord symbols plus `N`/`.` for no chord; and rejects invalid input visibly. After updating, the preview, progression matches, and exported PDF use corrected beat placements and distinguish edits from unchanged estimates.
+- [ ] Saving corrected training examples requires explicit rights confirmation, stores only corrected intervals and the associated audio locally, and does not change the model until the owner reviews the dataset and runs the opt-in training command.
 - [ ] PDF download uses the latest updated preview and is not offered while the preview is stale or invalid.
 - [ ] The printout shows title, key, time signature, tempo, song sections, bar numbers, beat markers, and chord labels in a readable layout.
 - [ ] The chart reflects user-corrected metadata and manually edited section labels.
@@ -170,14 +183,17 @@ Source: `scope.md > The Core Loop`, `What "Working" Looks Like`, `The POC Bounda
 - **Empty search:** Explain that no progression matched and allow search/filter changes.
 - **Uncertain analysis:** Show the experimental-estimate warning in the app and exported chart.
 - **Uncertain metadata:** Mark key, tempo, and time signature as estimates and allow correction before export.
+- **Weak meter evidence:** Fall back to 4/4 with low confidence instead of treating a candidate-order tie as evidence for 3/4; the visitor can still correct the meter.
+- **Chord correction:** Clearly identify user-edited events; refresh progression matches and PDF only from the updated chart.
+- **Training feedback:** Store corrected audio locally only after explicit rights confirmation. The owner must review examples and explicitly include eligible songs in a training split; no automatic upload, collection, or retraining.
 - **No or ambiguous section match:** Keep chord estimates visible but do not highlight or link an unrelated databank entry.
 - **No-chord opening:** Start bar 1 at the first predicted chord and omit the preceding no-chord intro; if no chord is predicted anywhere, retain the recording duration and show dots.
 - **Stale chart preview:** Mark the preview as out of date after chart inputs change and require **Update chart preview** before PDF download.
 - **Missing title or section labels:** Prompt the visitor to provide a title; section labels may be left blank or edited before export.
 - **Analysis or PDF error:** Explain the failure and do not display fabricated results; retain any valid on-screen analysis if only export failed.
-- **Rights and privacy:** Analyze only local audio the visitor is authorized to use. The app processes visitor audio locally and does not store or share it. The learner confirmed their original training recordings and performances may be included in the public demo/repository.
+- **Rights and privacy:** Analyze only local audio the visitor is authorized to use. The app never uploads audio; by default, visitor audio is temporary and removed after analysis. A separate explicit rights confirmation is required to save corrected audio intervals under ignored local storage for owner review. Those feedback files are never included in the public repository. The learner confirmed their original training recordings and performances may be included in the public demo/repository.
 - **Frequency boundary:** Frequency groups are curated guidance, not measured claims about all songs.
-- **Persistence:** No account, ratings, or saved learning history in this POC. Visitor uploads and results are temporary.
+- **Persistence:** No account, ratings, or saved learning history in this POC. Visitor uploads and results are temporary unless the visitor explicitly confirms rights and saves corrected audio intervals to the local training-feedback folder.
 
 ## Product Decisions
 
@@ -188,7 +204,8 @@ Source: `scope.md > The Core Loop`, `What "Working" Looks Like`, `The POC Bounda
 - Derive progression candidates from chord predictions rather than training a second progression model.
 - Let visitors analyze authorized local audio, including full-band recordings, while clearly labeling model outputs as experimental.
 - Estimate key, tempo, and time signature in the app and allow visitors to correct those values. Visitors supply the song title and mark or edit song sections.
-- Include a section-aware bar/beat preview with an explicit update action and a printable PDF generated from the confirmed preview; do not build automatic song-section detection.
+- Include an in-preview chord editor, a section-aware bar/beat preview with an explicit update action, and a printable PDF generated from the confirmed preview; do not build automatic song-section detection.
+- Save corrected training intervals only after explicit rights confirmation, locally and outside the public repository. The owner reviews and assigns feedback songs to the training split, then chooses a separate opt-in training command; do not automatically retrain or include feedback in default training runs.
 - Use the learner's ranked starter groups: frequent (I–vi–IV–V, vi–IV–I–V, I–IV–V–I, ii–V–I), medium (the remaining diatonic examples), and less common (I–III–vi, I–III–IV, v–I–IV, I–II–IV).
 - Explain frequency groups as curated learning guidance, not a survey.
 - Start the beginner path with the major scale and diatonic chord qualities, then identify the altered note in each selected non-diatonic example.

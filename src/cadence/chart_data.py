@@ -25,6 +25,8 @@ class ChartChord:
     label: str
     score: float
     highlighted: bool
+    event_index: int
+    is_user_corrected: bool = False
 
 
 @dataclass(frozen=True)
@@ -48,6 +50,7 @@ class ChartData:
     time_signature: str
     duration: float
     chart_start_seconds: float | None
+    chart_start_is_fixed: bool
     beats_per_bar: int
     groups: tuple[ChartGroup, ...]
 
@@ -71,6 +74,8 @@ def first_chord_start(
 def bar_beat_slots(
     bar: ChartBar,
     beats_per_bar: int,
+    *,
+    include_no_chord: bool = False,
 ) -> tuple[tuple[ChartChord, ...], ...]:
     if isinstance(beats_per_bar, bool) or not isinstance(beats_per_bar, int):
         raise ValueError("Beats per bar must be a positive whole number.")
@@ -78,7 +83,7 @@ def bar_beat_slots(
         raise ValueError("Beats per bar must be a positive whole number.")
     slots: list[list[ChartChord]] = [[] for _ in range(beats_per_bar)]
     for chord in bar.chords:
-        if chord.label == "N":
+        if chord.label == "N" and not include_no_chord:
             continue
         slot = min(
             beats_per_bar,
@@ -164,6 +169,8 @@ def build_chart_data(
     events: Sequence[ChordEvent],
     sections: Sequence[SectionRange],
     progressions: tuple[Progression, ...],
+    corrected_event_indices: frozenset[int] = frozenset(),
+    chart_start_seconds: float | None = None,
 ) -> ChartData:
     clean_title = title.strip()
     if not clean_title:
@@ -180,7 +187,19 @@ def build_chart_data(
             or not math.isfinite(event.score)
         ):
             raise ChartDataError(f"Chord event {index + 1} has invalid timing or score.")
-    chart_start = first_chord_start(events, duration)
+    chart_start = (
+        first_chord_start(events, duration)
+        if chart_start_seconds is None
+        else chart_start_seconds
+    )
+    if chart_start is not None and (
+        not math.isfinite(chart_start)
+        or chart_start < 0
+        or chart_start >= duration
+    ):
+        raise ChartDataError(
+            "Chart start must be within the positive song duration."
+        )
     chart_time_origin = chart_start if chart_start is not None else 0.0
     chart_duration = duration - chart_time_origin
     bar_count = total_bar_count(chart_duration, tempo_bpm, time_signature)
@@ -238,6 +257,8 @@ def build_chart_data(
                         label=events[index].label,
                         score=events[index].score,
                         highlighted=index in highlighted_indices,
+                        event_index=index,
+                        is_user_corrected=index in corrected_event_indices,
                     )
                     for index, (bar, beat) in sorted(
                         event_positions.items(),
@@ -261,6 +282,8 @@ def build_chart_data(
                     label=events[index].label,
                     score=events[index].score,
                     highlighted=False,
+                    event_index=index,
+                    is_user_corrected=index in corrected_event_indices,
                 )
                 for index, (bar, beat) in sorted(
                     event_positions.items(),
@@ -283,6 +306,7 @@ def build_chart_data(
         time_signature=time_signature,
         duration=float(chart_duration),
         chart_start_seconds=chart_start,
+        chart_start_is_fixed=chart_start_seconds is not None,
         beats_per_bar=beats_per_bar,
         groups=tuple(groups),
     )

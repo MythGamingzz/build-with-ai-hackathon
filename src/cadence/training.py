@@ -1,5 +1,6 @@
 import argparse
 import csv
+import hashlib
 import json
 import math
 import os
@@ -33,6 +34,7 @@ from cadence.chords import (
     postprocess_model_labels,
     smooth_labels,
 )
+from cadence.feedback import feedback_annotation_paths
 
 ANNOTATION_FIELDS = {
     "song_id",
@@ -88,6 +90,7 @@ class TrainingReport:
     model_metrics: MetricSummary
     baseline_metrics: MetricSummary
     augmented_song_count: int
+    feedback_song_ids: tuple[str, ...]
 
 
 def normalize_chord_label(value: str) -> str:
@@ -207,6 +210,14 @@ def read_split(path: Path) -> SongSplit:
     return SongSplit(training, held_out)
 
 
+def _file_sha256(path: Path) -> bytes:
+    digest = hashlib.sha256()
+    with path.open("rb") as file:
+        for chunk in iter(lambda: file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.digest()
+
+
 def _normalized_features(chroma: NDArray[np.float32]) -> NDArray[np.float32]:
     norms = np.linalg.norm(chroma, axis=0, keepdims=True)
     return (chroma / np.maximum(norms, np.finfo(np.float32).eps)).T.astype(
@@ -256,10 +267,48 @@ def train_and_evaluate(
     model_path: Path,
     root: Path = DEFAULT_ROOT,
     feature_loader: Callable[[Path], AudioFeatures] = load_audio_features,
+    feedback_paths: Sequence[Path] = (),
 ) -> TrainingReport:
     annotations = read_annotations(annotations_path, root)
-    split = read_split(split_path)
     annotated_songs = {annotation.song_id for annotation in annotations}
+    feedback_song_ids: set[str] = set()
+    for feedback_path in feedback_paths:
+        feedback_annotations = read_annotations(feedback_path, root)
+        feedback_ids = {
+            annotation.song_id for annotation in feedback_annotations
+        }
+        if len(feedback_ids) != 1:
+            raise ValueError(
+                f"Feedback manifest must contain exactly one song: "
+                f"{feedback_path}."
+            )
+        feedback_id = next(iter(feedback_ids))
+        if not feedback_id.startswith("feedback_"):
+            raise ValueError(
+                f"Feedback song IDs must start with 'feedback_': {feedback_id}."
+            )
+        if feedback_id in annotated_songs or feedback_id in feedback_song_ids:
+            raise ValueError(f"Duplicate feedback song ID: {feedback_id}.")
+        feedback_song_ids.add(feedback_id)
+        annotated_songs.add(feedback_id)
+        annotations.extend(feedback_annotations)
+
+    split = read_split(split_path)
+    held_out_feedback = feedback_song_ids.intersection({split.held_out_song_id})
+    if held_out_feedback:
+        raise ValueError(
+            "Feedback cannot be assigned to the held-out song: "
+            + ", ".join(sorted(held_out_feedback))
+            + ". Keep the original evaluation song held out."
+        )
+    unassigned_feedback = feedback_song_ids.difference(split.training_song_ids)
+    if unassigned_feedback:
+        raise ValueError(
+            "Review feedback and add these song IDs to training_song_ids in "
+            f"{split_path} before including them: "
+            + ", ".join(sorted(unassigned_feedback))
+        )
+
     expected_songs = set(split.training_song_ids) | {split.held_out_song_id}
     if annotated_songs != expected_songs:
         missing = expected_songs - annotated_songs
@@ -270,6 +319,25 @@ def train_and_evaluate(
         if extra:
             details.append(f"unassigned songs {', '.join(sorted(extra))}")
         raise ValueError("Training split does not match annotations: " + "; ".join(details))
+
+    if feedback_song_ids:
+        held_out_audio = next(
+            annotation.audio_path
+            for annotation in annotations
+            if annotation.song_id == split.held_out_song_id
+        )
+        held_out_digest = _file_sha256(held_out_audio)
+        for feedback_id in sorted(feedback_song_ids):
+            feedback_audio = next(
+                annotation.audio_path
+                for annotation in annotations
+                if annotation.song_id == feedback_id
+            )
+            if _file_sha256(feedback_audio) == held_out_digest:
+                raise ValueError(
+                    f"Feedback audio for {feedback_id} is identical to the "
+                    "held-out recording. Keep it out of training."
+                )
 
     frames_by_song: dict[str, tuple[NDArray[np.float32], NDArray[np.str_]]] = {}
     features_by_song: dict[str, AudioFeatures] = {}
@@ -392,6 +460,7 @@ def train_and_evaluate(
         model_metrics=model_metrics,
         baseline_metrics=baseline_metrics,
         augmented_song_count=len(augmented_songs),
+        feedback_song_ids=tuple(sorted(feedback_song_ids)),
     )
 
 
@@ -402,6 +471,11 @@ def format_report(report: TrainingReport) -> str:
         f"Held-out song: {report.split.held_out_song_id}",
         f"Held-out labeled frames: {report.model_metrics.frame_count}",
     ]
+    if report.feedback_song_ids:
+        lines.append(
+            "Reviewed feedback included in training: "
+            + ", ".join(report.feedback_song_ids)
+        )
     if report.unsupported_labels:
         unsupported = ", ".join(
             f"{label} ({count} frames)" for label, count in report.unsupported_labels
@@ -452,14 +526,33 @@ def main(argv: Sequence[str] | None = None) -> int:
         type=Path,
         default=DEFAULT_ROOT / "models" / "chord_classifier.joblib",
     )
+    parser.add_argument(
+        "--include-reviewed-feedback",
+        action="store_true",
+        help=(
+            "include locally saved feedback after its song IDs are reviewed and "
+            "assigned to training_song_ids in the split file"
+        ),
+    )
     args = parser.parse_args(argv)
 
     try:
+        feedback_paths = (
+            feedback_annotation_paths(DEFAULT_ROOT)
+            if args.include_reviewed_feedback
+            else ()
+        )
+        if args.include_reviewed_feedback and not feedback_paths:
+            raise ValueError(
+                "No saved feedback manifests were found under "
+                "output/training-feedback/."
+            )
         report = train_and_evaluate(
             args.annotations,
             args.split,
             args.model,
             root=DEFAULT_ROOT,
+            feedback_paths=feedback_paths,
         )
     except (OSError, ValueError) as exc:
         print(f"Training failed: {exc}", file=sys.stderr)

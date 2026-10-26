@@ -11,7 +11,7 @@ Cadence remains one small Python app that runs on the team's computer and opens 
 
 Before using the song analyzer, the project owner runs a training command on five original songs with their chord labels. The program turns short audio slices into a 12-number summary of the pitches they contain, teaches a small classifier which chord label goes with each summary, and tests it on one whole song it never saw. It also runs the existing chord-template analyzer on that same held-out song so the demo can show whether training helped. The command saves the trained model; visitors do not train it.
 
-The browser app loads that saved model. When a visitor selects a local song, the app predicts chord labels, estimates the key, tempo, and time signature, and shows uncertainty. The visitor can correct the estimates, enter a title, and mark song sections. Clicking **Update chart preview** turns those confirmed inputs into one validated bar-and-beat chart; later edits make that preview stale until it is updated again. The same confirmed chart powers the on-screen section groups, lesson-match highlights, and downloadable PDF. Everything runs locally; visitor audio is temporary and is not sent to a service.
+The browser app loads that saved model. When a visitor selects a local song, the app predicts chord labels, estimates the key, tempo, and time signature, and shows uncertainty. The visitor can correct the estimates, enter a title, mark song sections, and relabel chord events in the bar preview. Clicking **Update chart preview** turns those confirmed inputs into one validated bar-and-beat chart; later edits make that preview stale until it is updated again. The same confirmed chart powers the on-screen section groups, direct lesson links, progression matches, and downloadable PDF. Only after explicit rights confirmation can the visitor save the recording and corrected intervals locally for owner review; the model changes only after a separate, deliberate training run. No visitor audio is sent to a service.
 
 The model is a small experiment, not a general music-recognition system. Five songs are enough to demonstrate the training process, but not enough to promise that it will work well on every style or recording.
 
@@ -65,7 +65,7 @@ The older `faster-whisper` lyric experiment and its CLI remain separate from the
 - **Start the visitor app:** Run `.venv\Scripts\python.exe -m streamlit run app.py`, then use the browser tab it opens or navigate to `http://localhost:8501`.
 - **Demo path:** Show the training command and output first; then show the app using the saved model, explore a progression lesson, analyze an authorized local song, correct metadata/sections, update and review the preview, then export the PDF.
 - **Audio input:** Support full-song WAV and MP3 if the installed local decoder can read them. Verify MP3 support early. If decoding fails, show a clear supported-format error and do not show fabricated results.
-- **Privacy and rights:** The learner confirmed the original training songs and performances may be public. Include only those five approved originals and their annotations; do not include the earlier copyrighted cover or private analysis artifacts. Visitor audio is processed locally, held in a temporary file only as needed, and removed after analysis.
+- **Privacy and rights:** The learner confirmed the original training songs and performances may be public. Include only those five approved originals and their annotations; do not include the earlier copyrighted cover or private analysis artifacts. Visitor audio is processed locally, held in a temporary file only as needed, and removed after analysis unless the visitor explicitly confirms rights and saves corrected intervals. Opt-in audio and annotations remain under ignored `output/training-feedback/` and are never committed or uploaded.
 - **Hackathon submission:** A short demo video and public GitHub repository are required. Deployment is optional; a local app is sufficient for the recording.
 
 ## Look and Feel
@@ -78,7 +78,7 @@ Streamlit supports a theme and small CSS refinements, but not the layout freedom
 
 ### Streamlit App and Experience Choice
 
-`app.py` presents experience choice, beginner tutorial, navigation to the databank or song analysis, and temporary session values for query, filter, selected lesson, uploaded analysis, corrected metadata, draft section labels/ranges, and the confirmed chart preview. The preview is marked stale when its inputs change and must be updated before PDF download. No user account or persistent song history.
+`app.py` presents experience choice, beginner tutorial, navigation to the databank or song analysis, and temporary session values for query, filter, selected lesson, uploaded analysis, corrected metadata and chord labels, draft section labels/ranges, and the confirmed chart preview. The preview is marked stale when its inputs change and must be updated before lesson links or PDF download. The default flow does not persist visitor audio. A separate opt-in action stores rights-cleared audio and corrected intervals under ignored `output/training-feedback/` for owner review; it never uploads or automatically trains on them. No user account or public song history.
 Implements `prd.md > Experience choice and beginner tutorial`.
 
 ### Beginner Scale Tutorial
@@ -118,6 +118,8 @@ Implements `prd.md > Training and evaluating the chord model` and `prd.md > Anal
 Use Demo 3 as the whole-song held-out evaluation set and the other four for training. Keep Demo 5 in the training set because it is the only recording with augmented chords; report that `Daug` and `Eaug` have examples from one song and cannot be independently evaluated on a held-out song. A small scikit-learn logistic-regression classifier learns from the chroma features. Train on the 24 major/minor triad labels, observed `Daug`/`Eaug` labels, and `N` (no chord); labels not represented in the training data cannot be learned, and other chord qualities are outside the first model's vocabulary.
 
 Project both methods' predictions and the reference annotations onto the same feature-frame timestamps, and score only frames with reference labels. Apply the same temporal smoothing, short-run merging, and low-energy masking to both prediction streams before scoring. Print frame-level accuracy and macro-F1 so common chords do not hide errors on less frequent labels; count held-out labels absent from training as misses and report them separately. Do not claim a successful improvement unless the measured result supports it. Save the fitted model to `models/chord_classifier.joblib`; training is a project-owner command, not a visitor action.
+
+An explicit `--include-reviewed-feedback` option reads local feedback manifests under ignored `output/training-feedback/`. It fails if feedback song IDs are not assigned to the training side of `data/training/split.json`, so the owner must review examples and preserve the held-out song before training. The default training command never reads these examples. Feedback stores only manually corrected intervals, not every model prediction, and retraining remains an explicit owner action.
 Implements `prd.md > Training and evaluating the chord model`.
 
 ### Pre-Trained Chord Inference
@@ -131,7 +133,7 @@ Implements `prd.md > Training and evaluating the chord model` and `prd.md > Anal
 
 - **Key:** Compare the song-wide chroma profile to major/minor key profiles and return the strongest candidate with heuristic uncertainty.
 - **Tempo and beat times:** Use librosa beat tracking; tempo and beats are estimates.
-- **Time signature:** Use beat-accent periodicity to suggest a common meter such as 3/4, 4/4, or 6/8. This heuristic is not reliable for every song; when confidence is weak, prompt the visitor to confirm or correct it.
+- **Time signature:** Use beat-accent periodicity to suggest a common meter such as 3/4, 4/4, or 6/8. Resolve weak ties to a low-confidence 4/4 fallback rather than candidate-order 3/4. When a high-rate beat tracker follows eighth-note pulses in 6/8, infer the meter from those pulses and convert its tempo to quarter-note BPM for chart alignment. This heuristic is not reliable for every song; prompt the visitor to confirm or correct it.
 
 The visitor can edit key, tempo, and time signature. They enter the song title and create or edit section names with bar ranges. Convert chord event times to bar/beat positions using the confirmed tempo and meter. Do not silently guess section boundaries. An explicit chart-preview update applies the edited values and refreshes all bar assignments; keep the previously generated preview visibly stale until then.
 Implements `prd.md > Analyzing a local song`.
@@ -143,12 +145,12 @@ Implements `prd.md > Analyzing a local song`.
 
 ### Chart Data and Section Preview
 
-`src/cadence/chart_data.py` converts chord events, corrected metadata, and manually entered section ranges into one validated chart model shared by the app preview and PDF. Each bar contains beat-positioned chord labels and flags for cells belonging to a unique section progression match. Reject invalid or overlapping section ranges with an actionable message and include bars outside named ranges in an unsectioned group. Start bar 1 at the first predicted chord and omit earlier no-chord events; when there is no predicted chord, retain the full duration and render every empty beat as a dot. The Streamlit app shows section groups as measures with one amber boundary on each side, places chord names on their estimated beats, and fills empty beats—including `N` predictions—with dots; bar numbers appear above measures, not beside chord names. Hover over a highlighted unique match to see its progression name, pattern, key, and lesson link. **Update chart preview** commits current edits and recalculates bar placement and per-section matches. If any chart input changes afterward, mark the existing preview stale, suppress its lesson links, and disable PDF download until it is updated again.
+`src/cadence/chart_editing.py` validates one typed chord value per beat cell. Supported chord symbols are accepted; `N` and `.` both mean no chord. If a cell changes, replace its events with a correction at the start of that beat, making it possible to move a chord to another beat or bar by editing both cells. Preserve unchanged predictions, flag changed cells, and create local training annotations only for the corrected beat intervals after explicit rights confirmation. `src/cadence/chart_data.py` converts those events, corrected metadata, and manually entered section ranges into one validated chart model shared by the app preview and PDF. Each bar contains beat-positioned chord labels, their source-event indices, and flags for cells belonging to a unique section progression match. Reject invalid or overlapping section ranges with an actionable message and include bars outside named ranges in an unsectioned group. Start bar 1 at the first predicted chord and omit earlier no-chord events; when there is no predicted chord, retain the full duration and render every empty beat as a dot. The Streamlit app shows section groups as measures with one amber boundary on each side, places chord names on their estimated beats, and fills empty beats—including `N` predictions—with dots; bar numbers appear above measures, not beside chord names. User edits are distinguished from model estimates. A unique highlighted chord is itself clickable to its progression lesson, with hover details retained. **Update chart preview** commits current edits and recalculates bar placement and per-section matches. If any chart input changes afterward, mark the existing preview stale, suppress its lesson links, and disable PDF download until it is updated again.
 Implements `prd.md > Analyzing a local song` and `prd.md > Exporting a performance chart`.
 
 ### Performance Chart PDF
 
-`src/cadence/chart_pdf.py` builds the downloadable PDF in memory with ReportLab from the same confirmed chart model used by the preview. It lays out song title, corrected key/tempo/time signature, user-defined sections, numbered bars with single amber boundaries, chord labels on beat positions, dots for empty beats, and highlights for unique section matches. Keep bar numbers separate from chord names. State that bar 1 starts at the first predicted chord and that any earlier no-chord intro is excluded; if no chord was predicted, disclose that the full duration is retained. Longer songs flow across readable landscape pages. Include a clear estimate disclaimer. Streamlit offers download only for the latest updated preview; a PDF error leaves the on-screen preview available and no chart is saved after the visitor leaves.
+`src/cadence/chart_pdf.py` builds the downloadable PDF in memory with ReportLab from the same confirmed chart model used by the preview. It lays out song title, corrected key/tempo/time signature, user-defined sections, numbered bars with single amber boundaries, chord labels on beat positions, dots for empty beats, and highlights for unique section matches. Keep bar numbers separate from chord names. State that bar 1 starts at the first predicted chord and that any earlier no-chord intro is excluded; after a typed beat edit, state that the chart remains anchored at its original chart start. If no chord was predicted, disclose that the full duration is retained. Longer songs flow across readable landscape pages. Include a clear estimate disclaimer. Streamlit offers download only for the latest updated preview; a PDF error leaves the on-screen preview available and no chart is saved after the visitor leaves.
 Implements `prd.md > Exporting a performance chart`.
 
 ### Tests
@@ -161,6 +163,7 @@ Use synthetic audio and small synthetic annotation tables for automated checks; 
 - Chord event timing, candidate key/tempo/meter behavior, confidence/uncertain paths, and bar alignment.
 - Pattern matching for known, ambiguous, and no-match sequences.
 - Chart data covers correct beat slots, section grouping, invalid/overlapping ranges, per-section matches, highlighted event positions, no-chord dots, and first-chord bar anchoring.
+- Beat-cell editing accepts supported chord labels and `N`/`.` no-chord values, rejects invalid input, and moves a changed chord to the selected beat's start, including across a bar boundary.
 - Hovering a highlighted match shows its lesson details and the clickable lesson route; invalid lesson IDs show an actionable error.
 - Preview inputs changing after an update mark it stale; only the updated preview can be downloaded.
 - PDF output has a valid PDF header, includes the requested chart fields on manual inspection, highlights matched chords, and remains readable across multiple pages for long charts.
@@ -175,7 +178,9 @@ Implements acceptance criteria from all `prd.md > Features and Behavior` heading
 - **Train/holdout split** (`data/training/split.json`): song IDs assigned to the training set or the single held-out song. Split by song, not by audio frame.
 - **Trained model** (`models/chord_classifier.joblib`): fitted classifier generated by the owner training command and loaded by the local app. Add a narrow `.gitignore` exception for this approved public artifact while keeping all other private `/models/` contents ignored, so a fresh checkout can run the analyzer without exposing unrelated model files.
 - **Training report** (terminal output, optionally a generated report under ignored `output/`): training completion, held-out baseline/model scores, and data limitations.
-- **Analysis result** (temporary Streamlit session state): estimated chord events, key, tempo, meter, confidence notes, and candidate progression matches. Never persist visitor audio or analysis.
+- **Analysis result** (temporary Streamlit session state): estimated chord events, key, tempo, meter, confidence notes, and candidate progression matches. Visitor audio is not persisted by default.
+- **Chord edits** (temporary Streamlit session state): text values keyed by bar and beat; supported labels or `N`/`.` for no chord. Edited cells become beat-aligned intervals, while unchanged events remain marked as estimates.
+- **Opt-in training feedback** (local, ignored `output/training-feedback/<song-id>/`): explicitly rights-confirmed source audio plus CSV rows for only manually corrected beat intervals. The owner reviews these files, assigns eligible feedback song IDs to the training split, and uses `--include-reviewed-feedback` to train; default runs ignore them.
 - **Chart inputs** (temporary session state): title, corrected metadata, and user-marked section names/bar ranges.
 - **Confirmed chart preview** (temporary session state): validated bars/beats, section-specific progression matches and highlights, and the input signature used to detect stale edits. Generate PDF bytes only from this updated preview; clear with the session.
 - **Session state:** experience choice, tutorial position, search query, frequency filter, selected lesson, analysis result, and chart edits. It ends with the browser session; there are no accounts or saved history.
@@ -199,10 +204,12 @@ Build With AI/
 │   ├── audio_features.py                # Shared local audio loading/chroma
 │   ├── audio_examples.py                # Synthetic WAV lesson examples
 │   ├── chart_data.py                    # Validated bar/beat preview and section matches
+│   ├── chart_editing.py                 # Typed beat-cell validation and interval corrections
 │   ├── chart_pdf.py                     # Printable PDF generation from chart data
 │   ├── progression_data.py              # Validated progression catalog and search
 │   ├── chord_model.py                   # Load model and predict chord events
 │   ├── chords.py                        # Existing template baseline and CLI support
+│   ├── feedback.py                      # Explicit local storage of corrected training intervals
 │   ├── matching.py                      # Pattern matching across 12 major keys
 │   ├── song_metadata.py                 # Key, tempo, meter, and bar alignment
 │   ├── theory.py                        # Major-scale qualities and chord spellings
@@ -214,7 +221,9 @@ Build With AI/
 │   ├── test_audio_features.py
 │   ├── test_audio_examples.py
 │   ├── test_chart_data.py
+│   ├── test_chart_editing.py
 │   ├── test_chart_pdf.py
+│   ├── test_feedback.py
 │   ├── test_chord_model.py
 │   ├── test_matching.py
 │   ├── test_progressions.py
@@ -226,7 +235,7 @@ Build With AI/
 │   ├── test_comparison.py             # Existing reference-report tests
 │   └── test_transcription.py          # Existing transcription tests
 ├── recordings/                          # Existing ignored private experiments only
-├── output/                              # Ignored temporary analysis/training reports
+├── output/                              # Ignored reports and explicit local training feedback
 └── devpost/                             # Scope, PRD, spec, and build checklist
 ```
 
@@ -246,6 +255,8 @@ Build With AI/
 - **Training data lacks chord labels or the held-out song contains labels absent from training** → report unsupported labels and the limitation; still compare only what can be measured without pretending the model knows unseen classes.
 - **Saved model missing or incompatible** → app explains how to rerun the local training command; do not silently fall back to the old baseline as if it were the trained model.
 - **Audio decoder fails or metadata estimate is weak** → show a clear file error or ask the visitor to correct key/tempo/meter before exporting.
+- **Meter scores tie or remain weak** → suggest 4/4 with low confidence, never treat the candidate-order tie as evidence for 3/4.
+- **Training-feedback consent is absent, no labels were changed, or a feedback song is not assigned to training** → do not save or train on it; explain the required owner review and split assignment.
 - **PDF generation fails** → keep valid on-screen estimates available and explain the export failure.
 - **Invalid/overlapping section ranges or stale preview** → explain the problem; do not label stale chart data as current or enable its PDF download.
 - **No plausible or ambiguous progression match** → show estimates but do not highlight or link an unrelated lesson.
@@ -275,7 +286,8 @@ Build With AI/
 - **Learner choice — time signature:** Suggest a common meter with uncertainty and let users correct it; time signature detection is heuristic.
 - **Learner choice — PDF export:** Use a direct local PDF download with ReportLab; users manually supply title and song sections.
 - **Learner feedback — chart preview:** Group bar/beat placements by manually confirmed sections, highlight only unique per-section progression matches with lesson links, require an explicit preview update after edits, and generate the PDF from that same confirmed chart data.
-- **Rights/privacy decision:** The learner confirmed their training recordings and performances are their own and may be publicly shared. Include only the five approved original songs and annotations; never include the earlier copyrighted cover or visitor uploads.
+- **Verified — Demo 1 timing example:** The reference annotations place the bar-5 B-to-E change at 14.333s, the start of bar 6 at 90 BPM. The current model identifies E but starts it at 14.164s (0.169s early); the metadata estimate is 89.1 BPM. This is a beat/bar alignment issue, not a missing E chord label. The references already train the chord classifier; retraining alone is not evidence of improved transition placement. Keep the correction user-confirmed in the beat editor and evaluate any future automatic alignment separately.
+- **Rights/privacy decision:** The learner confirmed their training recordings and performances are their own and may be publicly shared. Include only the five approved original songs and annotations in the public repository; never include the earlier copyrighted cover or local visitor feedback. Corrected visitor audio can be saved only after explicit rights confirmation, remains ignored and local, and requires owner review before a later training run.
 - **Model artifact visibility:** Keep existing `/models/` ignore protection and allow-list only `models/chord_classifier.joblib`, which the learner wants available to app users.
 - **Useful uncertainty — how a chart becomes model knowledge:** A chord name in a PDF is not enough by itself; training needs the corresponding audio interval. The agreed path is to prepare start/end times and chord labels from the chart, deriving approximate times from bars, tempo, and meter where the recording is steady.
 - **Verified — MP3 support:** The installed local librosa decoder successfully read all five supplied MP3 recordings. Retain clear errors for unsupported or unreadable future files.

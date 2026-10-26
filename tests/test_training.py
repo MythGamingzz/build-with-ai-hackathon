@@ -7,6 +7,8 @@ from pathlib import Path
 import numpy as np
 
 from cadence.audio_features import AudioFeatures
+from cadence.chord_model import ChordEvent
+from cadence.feedback import feedback_annotation_paths, save_feedback_example
 from cadence.training import (
     _postprocess_model_labels,
     normalize_chord_label,
@@ -184,6 +186,91 @@ class TrainingEvaluationTests(unittest.TestCase):
             self.assertEqual(report.model_metrics.frame_count, 5)
             self.assertTrue(model_path.is_file())
             self.assertEqual(report.split.held_out_song_id, "holdout")
+            self.assertEqual(report.feedback_song_ids, ())
+
+    def test_reviewed_feedback_requires_training_split_assignment(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            audio = root / "audio"
+            audio.mkdir()
+            for song_id in ("train_a", "train_b", "holdout"):
+                (audio / f"{song_id}.mp3").write_bytes(song_id.encode("utf-8"))
+
+            annotations_path = root / "annotations.csv"
+            with annotations_path.open("w", newline="", encoding="utf-8") as file:
+                writer = csv.DictWriter(
+                    file,
+                    fieldnames=(
+                        "song_id",
+                        "audio_path",
+                        "start_seconds",
+                        "end_seconds",
+                        "chord_label",
+                    ),
+                )
+                writer.writeheader()
+                for song_id in ("train_a", "train_b", "holdout"):
+                    for start, end, label in (
+                        (0.0, 0.05, "C"),
+                        (0.05, 0.10, "G"),
+                    ):
+                        writer.writerow(
+                            {
+                                "song_id": song_id,
+                                "audio_path": f"audio/{song_id}.mp3",
+                                "start_seconds": start,
+                                "end_seconds": end,
+                                "chord_label": label,
+                            }
+                        )
+
+            feedback_id = save_feedback_example(
+                audio_bytes=b"new-authorized-recording",
+                filename="correction.wav",
+                original_events=(ChordEvent(0.0, 0.05, "C", 0.8),),
+                corrected_events=(ChordEvent(0.0, 0.05, "D", 0.8),),
+                root=root,
+            )
+            feedback_paths = feedback_annotation_paths(root)
+            split_path = root / "split.json"
+            split_data = {
+                "training_song_ids": ["train_a", "train_b"],
+                "held_out_song_id": "holdout",
+            }
+            split_path.write_text(json.dumps(split_data), encoding="utf-8")
+            chroma = np.zeros((12, 5), dtype=np.float32)
+            chroma[[0, 4, 7], :2] = 1
+            chroma[[7, 11, 2], 2:] = 1
+            fake_features = AudioFeatures(
+                chroma=chroma,
+                rms=np.ones(5, dtype=np.float32),
+                sample_rate=22050,
+                duration=0.2,
+            )
+
+            with self.assertRaisesRegex(ValueError, "training_song_ids"):
+                train_and_evaluate(
+                    annotations_path,
+                    split_path,
+                    root / "models" / "model.joblib",
+                    root=root,
+                    feature_loader=lambda _: fake_features,
+                    feedback_paths=feedback_paths,
+                )
+
+            split_data["training_song_ids"].append(feedback_id)
+            split_path.write_text(json.dumps(split_data), encoding="utf-8")
+            report = train_and_evaluate(
+                annotations_path,
+                split_path,
+                root / "models" / "model.joblib",
+                root=root,
+                feature_loader=lambda _: fake_features,
+                feedback_paths=feedback_paths,
+            )
+
+            self.assertEqual(report.feedback_song_ids, (feedback_id,))
+            self.assertIn(feedback_id, report.split.training_song_ids)
 
 
 if __name__ == "__main__":

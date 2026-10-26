@@ -42,6 +42,46 @@ class ChartPdfTests(unittest.TestCase):
 
         self.assertGreater(page_count, 1)
 
+    def test_corrected_labels_are_marked_in_the_printed_chart(self) -> None:
+        chart = build_chart_data(
+            title="Corrected chart",
+            key="C major",
+            tempo_bpm=120.0,
+            time_signature="4/4",
+            duration=2.0,
+            events=(ChordEvent(0.0, 2.0, "G", 0.9),),
+            sections=(SectionRange("Verse", 1, 1),),
+            progressions=self.progressions,
+            corrected_event_indices=frozenset({0}),
+        )
+
+        pdf_bytes = create_chart_pdf(chart)
+
+        self.assertIn(b"G*", pdf_bytes)
+        self.assertIn(b"* marks a user-corrected chord label", pdf_bytes)
+
+    def test_fixed_chart_origin_is_explained_after_beat_edits(self) -> None:
+        chart = build_chart_data(
+            title="Moved chord",
+            key="C major",
+            tempo_bpm=120.0,
+            time_signature="4/4",
+            duration=4.0,
+            events=(ChordEvent(2.0, 2.5, "E", 0.0),),
+            sections=(SectionRange("Song", 1, 2),),
+            progressions=self.progressions,
+            corrected_event_indices=frozenset({0}),
+            chart_start_seconds=0.0,
+        )
+
+        pdf_bytes = create_chart_pdf(chart)
+
+        self.assertIn(
+            b"Bar 1 stays anchored at the original chart start",
+            pdf_bytes,
+        )
+        self.assertNotIn(b"Bar 1 starts at the first predicted chord", pdf_bytes)
+
 
 if __name__ == "__main__":
     unittest.main()

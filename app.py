@@ -8,8 +8,13 @@ import streamlit as st
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 from cadence.audio_examples import generate_progression_wav
-from cadence.chord_model import DEFAULT_MODEL_PATH, ChordModelError
+from cadence.chord_model import (
+    DEFAULT_MODEL_PATH,
+    ChordEvent,
+    ChordModelError,
+)
 from cadence.chart_data import (
+    ChartChord,
     ChartData,
     ChartDataError,
     ChartGroup,
@@ -20,7 +25,13 @@ from cadence.chart_data import (
     format_bar_measure,
     total_bar_count,
 )
+from cadence.chart_editing import (
+    BeatCellEditError,
+    apply_beat_cell_edits,
+    default_beat_cells,
+)
 from cadence.chart_pdf import create_chart_pdf
+from cadence.feedback import FeedbackSaveError, save_feedback_example
 from cadence.progression_data import (
     FREQUENCY_GROUPS,
     Progression,
@@ -169,6 +180,13 @@ def _initialize_state() -> None:
         "analysis_layout": None,
         "analysis_chart_preview": None,
         "analysis_chart_signature": None,
+        "analysis_chart_layout_signature": None,
+        "analysis_edit_mode": False,
+        "analysis_beat_cell_values": {},
+        "analysis_feedback_original_events": (),
+        "analysis_feedback_corrected_events": (),
+        "analysis_feedback_rights_confirmed": False,
+        "analysis_feedback_id": None,
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -271,6 +289,14 @@ def _apply_styles() -> None:
             display: inline-block;
             font-weight: 700;
             padding: 0.1rem 0.2rem;
+        }
+        .chart-match-link {
+            display: inline-flex;
+            text-decoration: none;
+        }
+        .chart-match-link:focus-visible {
+            outline: 2px solid #68430f;
+            outline-offset: 2px;
         }
         .chart-measure-content .chart-chord {
             display: inline-block;
@@ -660,6 +686,12 @@ def _set_analysis_result(
 
     st.session_state.analysis_result = result
     st.session_state.analysis_file_hash = hashlib.sha256(audio_bytes).hexdigest()
+    st.session_state.analysis_edit_mode = False
+    st.session_state.analysis_beat_cell_values = {}
+    st.session_state.analysis_feedback_original_events = ()
+    st.session_state.analysis_feedback_corrected_events = ()
+    st.session_state.analysis_feedback_rights_confirmed = False
+    st.session_state.analysis_feedback_id = None
     st.session_state.analysis_title = ""
     st.session_state.analysis_key = result.metadata.key
     st.session_state.analysis_tempo = (
@@ -671,8 +703,16 @@ def _set_analysis_result(
     st.session_state.analysis_layout = None
     st.session_state.analysis_chart_preview = None
     st.session_state.analysis_chart_signature = None
+    st.session_state.analysis_chart_layout_signature = None
     for key in list(st.session_state.keys()):
-        if key.startswith(("analysis_section_name_", "analysis_section_start_", "analysis_section_end_")):
+        if key.startswith(
+            (
+                "analysis_section_name_",
+                "analysis_section_start_",
+                "analysis_section_end_",
+                "analysis_beat_edit_",
+            )
+        ):
             del st.session_state[key]
     tempo = float(st.session_state.analysis_tempo)
     chart_start = first_chord_start(result.events, result.duration) or 0.0
@@ -757,7 +797,39 @@ def _render_analysis_sections(total_bars: int, layout_id: str) -> None:
         st.rerun()
 
 
+def _beat_edit_key(bar_number: int, beat_number: int) -> str:
+    return (
+        f"analysis_beat_edit_{st.session_state.analysis_file_hash}_"
+        f"{bar_number}_{beat_number}"
+    )
+
+
+def _store_beat_cell(address: tuple[int, int], widget_key: str) -> None:
+    values = dict(st.session_state.analysis_beat_cell_values)
+    values[address] = st.session_state[widget_key]
+    st.session_state.analysis_beat_cell_values = values
+
+
+def _current_beat_values(result: SongAnalysis) -> dict[tuple[int, int], str]:
+    defaults = default_beat_cells(
+        result.events,
+        duration=result.duration,
+        tempo_bpm=float(st.session_state.analysis_tempo),
+        time_signature=st.session_state.analysis_time_signature,
+    )
+    values = dict(defaults)
+    values.update(st.session_state.analysis_beat_cell_values)
+    return {address: values[address] for address in defaults}
+
+
 def _chart_input_signature(result: SongAnalysis) -> str:
+    beat_defaults = default_beat_cells(
+        result.events,
+        duration=result.duration,
+        tempo_bpm=float(st.session_state.analysis_tempo),
+        time_signature=st.session_state.analysis_time_signature,
+    )
+    beat_values = _current_beat_values(result)
     signature = (
         st.session_state.analysis_file_hash,
         st.session_state.analysis_title.strip(),
@@ -773,15 +845,31 @@ def _chart_input_signature(result: SongAnalysis) -> str:
             for section in st.session_state.analysis_sections
         ),
         tuple(
-            (
-                event.start_seconds,
-                event.end_seconds,
-                event.label,
-                event.score,
+            sorted(
+                (address, value)
+                for address, value in beat_values.items()
+                if value != beat_defaults[address]
             )
-            for event in result.events
         ),
         result.metadata.beat_times,
+    )
+    return hashlib.sha256(repr(signature).encode("utf-8")).hexdigest()
+
+
+def _chart_layout_signature(result: SongAnalysis) -> str:
+    signature = (
+        st.session_state.analysis_file_hash,
+        float(st.session_state.analysis_tempo),
+        st.session_state.analysis_time_signature,
+        tuple(
+            (
+                section["name"],
+                int(section["start_bar"]),
+                int(section["end_bar"]),
+            )
+            for section in st.session_state.analysis_sections
+        ),
+        first_chord_start(result.events, result.duration),
     )
     return hashlib.sha256(repr(signature).encode("utf-8")).hexdigest()
 
@@ -790,29 +878,46 @@ def _matched_chord_html(
     label: str,
     progression: Progression,
     key: str,
+    is_user_corrected: bool = False,
 ) -> str:
     lesson_link = f"?lesson={quote(progression.id, safe='')}"
     match_details = (
         f"{progression.name} ({progression.pattern}) in {key}"
     )
+    display_label = f"{label}*" if is_user_corrected else label
     accessible_label = (
-        f"{label}, possible match {match_details}, open progression lesson"
+        f"{display_label}, "
+        f"{'user-corrected; ' if is_user_corrected else ''}"
+        f"possible match {match_details}, open progression lesson"
     )
     return (
         '<span class="chart-hover-match" tabindex="0" '
         f'aria-label="{escape(accessible_label)}">'
-        f'<span class="chart-match">{escape(label)}</span>'
+        f'<a class="chart-match-link" href="{lesson_link}" '
+        f'aria-label="{escape(accessible_label)}">'
+        f'<span class="chart-match">{escape(display_label)}</span></a>'
         '<span class="chart-tooltip" role="tooltip">'
+        f"{'<strong>User-corrected chord.</strong><br/>' if is_user_corrected else ''}"
         f"<strong>{escape(match_details)}</strong><br/>"
         f'<a href="{lesson_link}">Open progression lesson</a>'
         "</span></span>"
     )
 
 
+def _beat_cell_default(slot: tuple[ChartChord, ...]) -> str:
+    labels = tuple(
+        dict.fromkeys(chord.label for chord in slot if chord.label != "N")
+    )
+    if labels:
+        return ", ".join(labels)
+    return "N" if any(chord.label == "N" for chord in slot) else "."
+
+
 def _render_chart_group(
     chart: ChartData,
     group: ChartGroup,
     show_lesson_link: bool,
+    edit_mode: bool = False,
 ) -> None:
     if not group.bars:
         return
@@ -830,23 +935,82 @@ def _render_chart_group(
         )
 
     for row_start in range(0, len(group.bars), 4):
+        bars = group.bars[row_start : row_start + 4]
+        if edit_mode:
+            bar_columns = st.columns(len(bars))
+            for bar_column, bar in zip(bar_columns, bars, strict=True):
+                with bar_column:
+                    st.markdown(f"**Bar {bar.number}**")
+                    beat_columns = st.columns(chart.beats_per_bar)
+                    beat_slots = bar_beat_slots(
+                        bar,
+                        chart.beats_per_bar,
+                        include_no_chord=True,
+                    )
+                    for beat_index, (beat_column, slot) in enumerate(
+                        zip(beat_columns, beat_slots, strict=True),
+                        start=1,
+                    ):
+                        with beat_column:
+                            widget_key = _beat_edit_key(
+                                bar.number,
+                                beat_index,
+                            )
+                            address = (bar.number, beat_index)
+                            defaults = st.session_state.analysis_beat_cell_values
+                            if address not in defaults:
+                                defaults = dict(defaults)
+                                defaults[address] = _beat_cell_default(slot)
+                                st.session_state.analysis_beat_cell_values = defaults
+                            if (
+                                widget_key not in st.session_state
+                                or st.session_state[widget_key] != defaults[address]
+                            ):
+                                st.session_state[widget_key] = defaults[address]
+                            st.text_input(
+                                f"Bar {bar.number}, beat {beat_index} chord",
+                                key=widget_key,
+                                label_visibility="collapsed",
+                                help=(
+                                    "Type one supported chord symbol. Use N or . "
+                                    "for no chord."
+                                ),
+                                on_change=_store_beat_cell,
+                                args=(address, widget_key),
+                            )
+            continue
+
         row_html = []
-        for bar in group.bars[row_start : row_start + 4]:
-            beat_slots = bar_beat_slots(bar, chart.beats_per_bar)
+        for bar in bars:
+            beat_slots = bar_beat_slots(
+                bar,
+                chart.beats_per_bar,
+                include_no_chord=True,
+            )
             beat_html = []
             for slot in beat_slots:
                 if not slot:
                     beat_html.append('<span class="chart-chord">.</span>')
                     continue
-                labels: dict[str, bool] = {}
+                labels: dict[str, tuple[bool, bool]] = {}
                 for chord in slot:
                     if chord.label == "N":
                         continue
-                    labels[chord.label] = labels.get(chord.label, False) or (
-                        chord.highlighted and show_lesson_link
+                    previous = labels.get(chord.label, (False, False))
+                    labels[chord.label] = (
+                        previous[0] or (chord.highlighted and show_lesson_link),
+                        previous[1] or chord.is_user_corrected,
                     )
                 if not labels:
-                    beat_html.append('<span class="chart-chord">.</span>')
+                    corrected_no_chord = any(
+                        chord.label == "N" and chord.is_user_corrected
+                        for chord in slot
+                    )
+                    beat_html.append(
+                        '<span class="chart-chord">'
+                        + ("·*" if corrected_no_chord else ".")
+                        + "</span>"
+                    )
                     continue
                 progression = (
                     group.match.progression
@@ -854,18 +1018,22 @@ def _render_chart_group(
                     else None
                 )
                 rendered_labels = []
-                for label, highlighted in labels.items():
+                for label, (highlighted, is_user_corrected) in labels.items():
                     if highlighted and progression is not None and show_lesson_link:
                         rendered_labels.append(
                             _matched_chord_html(
                                 label,
                                 progression,
                                 group.match.key or "",
+                                is_user_corrected,
                             )
                         )
                     else:
+                        display_label = (
+                            f"{label}*" if is_user_corrected else label
+                        )
                         rendered_labels.append(
-                            f'<span class="chart-chord">{escape(label)}</span>'
+                            f'<span class="chart-chord">{escape(display_label)}</span>'
                         )
                 beat_html.append(
                     " / ".join(rendered_labels)
@@ -903,21 +1071,39 @@ def _render_chart_preview(result: SongAnalysis, progressions: tuple[Progression,
             for section in st.session_state.analysis_sections
         )
         try:
+            beat_edits = apply_beat_cell_edits(
+                result.events,
+                _current_beat_values(result),
+                duration=result.duration,
+                tempo_bpm=float(st.session_state.analysis_tempo),
+                time_signature=st.session_state.analysis_time_signature,
+            )
             chart = build_chart_data(
                 title=st.session_state.analysis_title,
                 key=st.session_state.analysis_key,
                 tempo_bpm=float(st.session_state.analysis_tempo),
                 time_signature=st.session_state.analysis_time_signature,
                 duration=result.duration,
-                events=result.events,
+                events=beat_edits.events,
                 sections=sections,
                 progressions=progressions,
+                corrected_event_indices=beat_edits.corrected_event_indices,
+                chart_start_seconds=beat_edits.chart_start_seconds,
             )
-        except ChartDataError as exc:
+        except (BeatCellEditError, ChartDataError) as exc:
             st.error(str(exc))
         else:
             st.session_state.analysis_chart_preview = chart
             st.session_state.analysis_chart_signature = current_signature
+            st.session_state.analysis_chart_layout_signature = (
+                _chart_layout_signature(result)
+            )
+            st.session_state.analysis_feedback_original_events = (
+                beat_edits.original_feedback_events
+            )
+            st.session_state.analysis_feedback_corrected_events = (
+                beat_edits.corrected_feedback_events
+            )
 
     preview = st.session_state.analysis_chart_preview
     if preview is None:
@@ -930,6 +1116,15 @@ def _render_chart_preview(result: SongAnalysis, progressions: tuple[Progression,
     preview_is_current = (
         st.session_state.analysis_chart_signature == current_signature
     )
+    if not preview_is_current:
+        st.session_state.analysis_feedback_original_events = ()
+        st.session_state.analysis_feedback_corrected_events = ()
+    layout_is_current = (
+        st.session_state.analysis_chart_layout_signature
+        == _chart_layout_signature(result)
+    )
+    if not layout_is_current:
+        st.session_state.analysis_edit_mode = False
     if preview_is_current:
         st.caption("Preview is up to date.")
     else:
@@ -938,6 +1133,21 @@ def _render_chart_preview(result: SongAnalysis, progressions: tuple[Progression,
             "click **Update chart preview** before using lesson links or downloading."
         )
     st.markdown(f"### {escape(preview.title)}")
+    if st.session_state.analysis_edit_mode:
+        st.caption(
+            "Type one chord symbol per beat. Enter N or . for no chord; empty "
+            "beats are editable too. A change is placed at that beat's start."
+        )
+    has_corrected_chords = any(
+        chord.is_user_corrected
+        for group in preview.groups
+        for bar in group.bars
+        for chord in bar.chords
+    )
+    if has_corrected_chords:
+        st.caption(
+            "An asterisk marks a user-corrected chord label; untouched labels remain estimates."
+        )
     st.caption(
         f"{escape(preview.key)} · {preview.tempo_bpm:g} BPM · "
         f"{escape(preview.time_signature)}"
@@ -946,6 +1156,12 @@ def _render_chart_preview(result: SongAnalysis, progressions: tuple[Progression,
         st.info(
             "No chord was predicted. Empty beats are shown as dots; the chart "
             "keeps the recording's full duration."
+        )
+    elif preview.chart_start_is_fixed:
+        st.caption(
+            f"Bar 1 stays anchored at the original chart start "
+            f"({preview.chart_start_seconds:.2f}s); any earlier no-chord intro "
+            "is excluded."
         )
     else:
         st.caption(
@@ -958,7 +1174,22 @@ def _render_chart_preview(result: SongAnalysis, progressions: tuple[Progression,
             preview,
             group,
             show_lesson_link=preview_is_current,
+            edit_mode=st.session_state.analysis_edit_mode,
         )
+
+    edit_columns = st.columns((5, 1))
+    with edit_columns[1]:
+        if layout_is_current:
+            button_label = (
+                "Done editing" if st.session_state.analysis_edit_mode else "Edit chords"
+            )
+            if st.button(button_label, key="analysis_edit_chords"):
+                st.session_state.analysis_edit_mode = (
+                    not st.session_state.analysis_edit_mode
+                )
+                st.rerun()
+        else:
+            st.caption("Update before editing")
 
     if preview_is_current:
         try:
@@ -992,6 +1223,7 @@ def _render_chart_preview(result: SongAnalysis, progressions: tuple[Progression,
 def _render_song_analysis(
     result: SongAnalysis,
     progressions: tuple[Progression, ...],
+    uploaded_file: UploadedFile,
 ) -> None:
     st.warning(
         "Chord, key, tempo, and time-signature values are experimental estimates. "
@@ -1041,7 +1273,11 @@ def _render_song_analysis(
         float(tempo),
         st.session_state.analysis_time_signature,
     )
-    layout = (float(tempo), st.session_state.analysis_time_signature)
+    layout = (
+        float(tempo),
+        st.session_state.analysis_time_signature,
+        chart_start,
+    )
     if st.session_state.analysis_layout != layout:
         adjusted_sections = []
         for index, section in enumerate(st.session_state.analysis_sections):
@@ -1064,7 +1300,10 @@ def _render_song_analysis(
     layout_id = f"{float(tempo):.3f}_{st.session_state.analysis_time_signature.replace('/', '_')}"
     _render_analysis_sections(total_bars, layout_id)
 
-    st.subheader("Estimated chord spans")
+    st.subheader("Model chord estimates")
+    st.caption(
+        "Beat-cell edits appear in the chart after you update its preview."
+    )
     if chart_start is not None:
         st.caption(
             "Bar and beat positions start at the first predicted chord; any earlier "
@@ -1087,12 +1326,13 @@ def _render_song_analysis(
         )
         chord_rows.append(
             {
-                "Chord estimate": "." if event.label == "N" else event.label,
+                "Chord": "·" if event.label == "N" else event.label,
+                "Status": "Model estimate",
                 "Start": f"{event.start_seconds:.2f}s",
                 "End": f"{event.end_seconds:.2f}s",
                 "Bar": bar,
                 "Beat": beat,
-                "Heuristic model score": round(event.score, 3),
+                "Original model score": round(event.score, 3),
             }
         )
     if chord_rows:
@@ -1101,6 +1341,76 @@ def _render_song_analysis(
         st.info("No chord spans were produced for this recording.")
 
     _render_chart_preview(result, progressions)
+    _render_training_feedback(uploaded_file)
+
+
+def _render_training_feedback(
+    uploaded_file: UploadedFile,
+) -> None:
+    original_events = st.session_state.analysis_feedback_original_events
+    corrected_events = st.session_state.analysis_feedback_corrected_events
+    changed_count = len(corrected_events)
+    if not changed_count:
+        return
+
+    st.subheader("Save corrections for a future training run")
+    st.write(
+        "Corrected chord intervals can become local training examples after the "
+        "recording's rights and labels are reviewed. The model is not changed here."
+    )
+    st.caption(
+        "This saves the full audio file locally but includes only manually changed "
+        "chord intervals in its annotation file. Default training ignores it."
+    )
+    st.checkbox(
+        "I own this recording or have permission to store and use it as local "
+        "model-training data.",
+        key="analysis_feedback_rights_confirmed",
+    )
+    if st.session_state.analysis_feedback_id:
+        feedback_id = st.session_state.analysis_feedback_id
+        st.caption(
+            f"Saved locally as `{feedback_id}`. Further saves update this example."
+        )
+        st.write(
+            "Review the audio and labels, add this ID to `training_song_ids` in "
+            "`data/training/split.json` (never add the held-out song), then run:"
+        )
+        st.code(
+            ".venv\\Scripts\\python.exe -m cadence.training "
+            "--include-reviewed-feedback"
+        )
+    if st.button(
+        "Save corrected intervals locally",
+        disabled=not st.session_state.analysis_feedback_rights_confirmed,
+        key="save_training_feedback",
+    ):
+        try:
+            feedback_id = save_feedback_example(
+                audio_bytes=uploaded_file.getvalue(),
+                filename=uploaded_file.name,
+                original_events=original_events,
+                corrected_events=corrected_events,
+                root=APP_ROOT,
+                feedback_id=st.session_state.analysis_feedback_id,
+            )
+        except (FeedbackSaveError, OSError) as exc:
+            st.error(f"Training feedback could not be saved: {exc}")
+        else:
+            st.session_state.analysis_feedback_id = feedback_id
+            st.success(
+                f"Saved {changed_count} corrected interval(s) locally as "
+                f"`{feedback_id}`."
+            )
+            st.write(
+                "Review the audio and labels, add this ID to `training_song_ids` "
+                "in `data/training/split.json` (never add the held-out song), "
+                "then run:"
+            )
+            st.code(
+                ".venv\\Scripts\\python.exe -m cadence.training "
+                "--include-reviewed-feedback"
+            )
 
 
 def _render_analysis(progressions: tuple[Progression, ...]) -> None:
@@ -1123,14 +1433,19 @@ def _render_analysis(progressions: tuple[Progression, ...]) -> None:
     result = st.session_state.analysis_result
     if (
         result is not None
-        and uploaded_file is not None
-        and hashlib.sha256(uploaded_file.getvalue()).hexdigest()
-        != st.session_state.analysis_file_hash
+        and (
+            uploaded_file is None
+            or hashlib.sha256(uploaded_file.getvalue()).hexdigest()
+            != st.session_state.analysis_file_hash
+        )
     ):
-        st.info("A different file is selected. Analyze it to replace the current estimates.")
+        st.info(
+            "The analyzed file is no longer selected or a different file is selected. "
+            "Analyze it again before continuing."
+        )
         result = None
     if result is not None:
-        _render_song_analysis(result, progressions)
+        _render_song_analysis(result, progressions, uploaded_file)
 
 
 def main() -> None:

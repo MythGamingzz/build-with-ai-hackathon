@@ -52,15 +52,35 @@ class _MeasureRow(Flowable):
             slot_left = x + 12
             slot_width = (measure_width - 24) / self.beats_per_bar
             for slot_index, slot in enumerate(
-                bar_beat_slots(bar, self.beats_per_bar)
+                bar_beat_slots(
+                    bar,
+                    self.beats_per_bar,
+                    include_no_chord=True,
+                )
             ):
-                unique_labels: dict[str, bool] = {}
+                unique_labels: dict[str, tuple[bool, bool]] = {}
                 for chord in slot:
-                    unique_labels[chord.label] = unique_labels.get(
-                        chord.label, False
-                    ) or chord.highlighted
-                label = "/".join(unique_labels) if unique_labels else "."
-                highlighted = any(unique_labels.values())
+                    if chord.label == "N":
+                        continue
+                    previous = unique_labels.get(chord.label, (False, False))
+                    unique_labels[chord.label] = (
+                        previous[0] or chord.highlighted,
+                        previous[1] or chord.is_user_corrected,
+                    )
+                if unique_labels:
+                    label = "/".join(
+                        f"{chord_label}{'*' if corrected else ''}"
+                        for chord_label, (_, corrected) in unique_labels.items()
+                    )
+                else:
+                    corrected_no_chord = any(
+                        chord.label == "N" and chord.is_user_corrected
+                        for chord in slot
+                    )
+                    label = ".*" if corrected_no_chord else "."
+                highlighted = any(
+                    highlight for highlight, _ in unique_labels.values()
+                )
                 font_size = 8.0
                 label_width = stringWidth(label, "Courier", font_size)
                 while label_width > slot_width - 2 and font_size > 5.5:
@@ -149,15 +169,36 @@ def create_chart_pdf(data: ChartData) -> bytes:
                 "recording duration is retained."
                 if data.chart_start_seconds is None
                 else (
-                    f"Bar 1 starts at the first predicted chord "
-                    f"({data.chart_start_seconds:.2f}s); any earlier no-chord intro "
-                    "is excluded."
+                    (
+                        f"Bar 1 stays anchored at the original chart start "
+                        f"({data.chart_start_seconds:.2f}s); any earlier no-chord "
+                        "intro is excluded."
+                    )
+                    if data.chart_start_is_fixed
+                    else (
+                        f"Bar 1 starts at the first predicted chord "
+                        f"({data.chart_start_seconds:.2f}s); any earlier no-chord "
+                        "intro is excluded."
+                    )
                 )
             ),
             cell_style,
         ),
         Spacer(1, 8),
     ]
+    if any(
+        chord.is_user_corrected
+        for group in data.groups
+        for bar in group.bars
+        for chord in bar.chords
+    ):
+        story.insert(
+            4,
+            Paragraph(
+                "* marks a user-corrected chord label; unmarked labels are model estimates.",
+                cell_style,
+            ),
+        )
     for group in data.groups:
         story.append(Paragraph(escape(group.name), section_style))
         if group.match is not None and group.match.progression is not None:
