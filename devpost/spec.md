@@ -35,7 +35,8 @@ Open Streamlit
     → load audio locally and predict chord labels
     → estimate key, tempo, and meter; visitor can correct them
     → visitor enters title and edits section names/bar ranges
-    → click Update chart preview and review section-grouped bars/beats and match links
+    → finish chord editing to apply beat changes; update chart preview after metadata/section changes
+    → review section-grouped bars/beats and match links
     → download a printable PDF from that confirmed preview
     → optionally open a plausible matching progression lesson
 ```
@@ -145,7 +146,7 @@ Implements `prd.md > Analyzing a local song`.
 
 ### Chart Data and Section Preview
 
-`src/cadence/chart_editing.py` validates one typed chord value per beat cell. Supported chord symbols are accepted; `N` and `.` both mean no chord. If a cell changes, replace its events with a correction at the start of that beat, making it possible to move a chord to another beat or bar by editing both cells. Preserve unchanged predictions, flag changed cells, and create local training annotations only for the corrected beat intervals after explicit rights confirmation. `src/cadence/chart_data.py` converts those events, corrected metadata, and manually entered section ranges into one validated chart model shared by the app preview and PDF. Each bar contains beat-positioned chord labels, their source-event indices, and flags for cells belonging to a unique section progression match. Reject invalid or overlapping section ranges with an actionable message and include bars outside named ranges in an unsectioned group. Start bar 1 at the first predicted chord and omit earlier no-chord events; when there is no predicted chord, retain the full duration and render every empty beat as a dot. The Streamlit app shows section groups as measures with one amber boundary on each side, places chord names on their estimated beats, and fills empty beats—including `N` predictions—with dots; bar numbers appear above measures, not beside chord names. User edits are distinguished from model estimates. A unique highlighted chord is itself clickable to its progression lesson, with hover details retained. **Update chart preview** commits current edits and recalculates bar placement and per-section matches. If any chart input changes afterward, mark the existing preview stale, suppress its lesson links, and disable PDF download until it is updated again.
+`src/cadence/chart_editing.py` validates one typed chord value per beat cell. Supported chord symbols are accepted; `N` and `.` both mean no chord. If a cell changes, replace its events with a correction at the start of that beat, making it possible to move a chord to another beat or bar by editing both cells. Preserve unchanged predictions, flag changed cells, and create local training annotations only for the corrected beat intervals after explicit rights confirmation. `src/cadence/chart_data.py` converts those events, corrected metadata, and manually entered section ranges into one validated chart model shared by the app preview and PDF. Each bar contains beat-positioned chord labels, their source-event indices, and flags for cells belonging to a unique section progression match. Reject invalid or overlapping section ranges with an actionable message and include bars outside named ranges in an unsectioned group. Start bar 1 at the first predicted chord and omit earlier no-chord events; when there is no predicted chord, retain the full duration and render every empty beat as a dot. The Streamlit app shows section groups as measures with one amber boundary on each side, places chord names on their estimated beats, and fills empty beats—including `N` predictions—with dots; bar numbers appear above measures, not beside chord names. User edits are distinguished from model estimates. A unique highlighted chord is itself clickable to its progression lesson, with hover details retained. Clicking **Done editing** validates cell values, updates the chart and per-section matches immediately, and exits edit mode only on success; invalid values leave the visitor in edit mode with an actionable error. **Update chart preview** applies other chart inputs such as metadata and section ranges. If any chart input changes afterward, mark the existing preview stale, suppress its lesson links, and disable PDF download until the changed inputs are applied.
 Implements `prd.md > Analyzing a local song` and `prd.md > Exporting a performance chart`.
 
 ### Performance Chart PDF
@@ -164,6 +165,7 @@ Use synthetic audio and small synthetic annotation tables for automated checks; 
 - Pattern matching for known, ambiguous, and no-match sequences.
 - Chart data covers correct beat slots, section grouping, invalid/overlapping ranges, per-section matches, highlighted event positions, no-chord dots, and first-chord bar anchoring.
 - Beat-cell editing accepts supported chord labels and `N`/`.` no-chord values, rejects invalid input, and moves a changed chord to the selected beat's start, including across a bar boundary.
+- Clicking **Done editing** applies valid cell edits and refreshes matches immediately; invalid cells keep editing active and prevent stale preview/PDF use.
 - Hovering a highlighted match shows its lesson details and the clickable lesson route; invalid lesson IDs show an actionable error.
 - Preview inputs changing after an update mark it stale; only the updated preview can be downloaded.
 - PDF output has a valid PDF header, includes the requested chart fields on manual inspection, highlights matched chords, and remains readable across multiple pages for long charts.
@@ -258,7 +260,7 @@ Build With AI/
 - **Meter scores tie or remain weak** → suggest 4/4 with low confidence, never treat the candidate-order tie as evidence for 3/4.
 - **Training-feedback consent is absent, no labels were changed, or a feedback song is not assigned to training** → do not save or train on it; explain the required owner review and split assignment.
 - **PDF generation fails** → keep valid on-screen estimates available and explain the export failure.
-- **Invalid/overlapping section ranges or stale preview** → explain the problem; do not label stale chart data as current or enable its PDF download.
+- **Invalid beat cells, invalid/overlapping section ranges, or stale preview** → explain the problem; keep invalid beat cells editable and do not label stale chart data as current or enable its PDF download.
 - **No plausible or ambiguous progression match** → show estimates but do not highlight or link an unrelated lesson.
 
 ## What Was Simplified and Why

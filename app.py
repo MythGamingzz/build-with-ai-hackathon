@@ -1054,6 +1054,56 @@ def _render_chart_group(
         )
 
 
+def _update_chart_preview(
+    result: SongAnalysis,
+    progressions: tuple[Progression, ...],
+) -> bool:
+    sections = tuple(
+        SectionRange(
+            name=section["name"],
+            start_bar=section["start_bar"],
+            end_bar=section["end_bar"],
+        )
+        for section in st.session_state.analysis_sections
+    )
+    try:
+        beat_edits = apply_beat_cell_edits(
+            result.events,
+            _current_beat_values(result),
+            duration=result.duration,
+            tempo_bpm=float(st.session_state.analysis_tempo),
+            time_signature=st.session_state.analysis_time_signature,
+        )
+        chart = build_chart_data(
+            title=st.session_state.analysis_title,
+            key=st.session_state.analysis_key,
+            tempo_bpm=float(st.session_state.analysis_tempo),
+            time_signature=st.session_state.analysis_time_signature,
+            duration=result.duration,
+            events=beat_edits.events,
+            sections=sections,
+            progressions=progressions,
+            corrected_event_indices=beat_edits.corrected_event_indices,
+            chart_start_seconds=beat_edits.chart_start_seconds,
+        )
+    except (BeatCellEditError, ChartDataError) as exc:
+        st.error(str(exc))
+        return False
+
+    st.session_state.analysis_chart_preview = chart
+    st.session_state.analysis_chart_signature = _chart_input_signature(result)
+    st.session_state.analysis_chart_layout_signature = (
+        _chart_layout_signature(result)
+    )
+    st.session_state.analysis_feedback_original_events = (
+        beat_edits.original_feedback_events
+    )
+    st.session_state.analysis_feedback_corrected_events = (
+        beat_edits.corrected_feedback_events
+    )
+    return True
+
+
 def _render_chart_preview(result: SongAnalysis, progressions: tuple[Progression, ...]) -> None:
     st.subheader("Section-aware chart preview")
     current_signature = _chart_input_signature(result)
@@ -1062,48 +1112,7 @@ def _render_chart_preview(result: SongAnalysis, progressions: tuple[Progression,
         type="primary",
         disabled=not st.session_state.analysis_title.strip(),
     ):
-        sections = tuple(
-            SectionRange(
-                name=section["name"],
-                start_bar=section["start_bar"],
-                end_bar=section["end_bar"],
-            )
-            for section in st.session_state.analysis_sections
-        )
-        try:
-            beat_edits = apply_beat_cell_edits(
-                result.events,
-                _current_beat_values(result),
-                duration=result.duration,
-                tempo_bpm=float(st.session_state.analysis_tempo),
-                time_signature=st.session_state.analysis_time_signature,
-            )
-            chart = build_chart_data(
-                title=st.session_state.analysis_title,
-                key=st.session_state.analysis_key,
-                tempo_bpm=float(st.session_state.analysis_tempo),
-                time_signature=st.session_state.analysis_time_signature,
-                duration=result.duration,
-                events=beat_edits.events,
-                sections=sections,
-                progressions=progressions,
-                corrected_event_indices=beat_edits.corrected_event_indices,
-                chart_start_seconds=beat_edits.chart_start_seconds,
-            )
-        except (BeatCellEditError, ChartDataError) as exc:
-            st.error(str(exc))
-        else:
-            st.session_state.analysis_chart_preview = chart
-            st.session_state.analysis_chart_signature = current_signature
-            st.session_state.analysis_chart_layout_signature = (
-                _chart_layout_signature(result)
-            )
-            st.session_state.analysis_feedback_original_events = (
-                beat_edits.original_feedback_events
-            )
-            st.session_state.analysis_feedback_corrected_events = (
-                beat_edits.corrected_feedback_events
-            )
+        _update_chart_preview(result, progressions)
 
     preview = st.session_state.analysis_chart_preview
     if preview is None:
@@ -1136,7 +1145,8 @@ def _render_chart_preview(result: SongAnalysis, progressions: tuple[Progression,
     if st.session_state.analysis_edit_mode:
         st.caption(
             "Type one chord symbol per beat. Enter N or . for no chord; empty "
-            "beats are editable too. A change is placed at that beat's start."
+            "beats are editable too. A change is placed at that beat's start. "
+            "Click **Done editing** to apply valid changes to the preview."
         )
     has_corrected_chords = any(
         chord.is_user_corrected
@@ -1184,10 +1194,13 @@ def _render_chart_preview(result: SongAnalysis, progressions: tuple[Progression,
                 "Done editing" if st.session_state.analysis_edit_mode else "Edit chords"
             )
             if st.button(button_label, key="analysis_edit_chords"):
-                st.session_state.analysis_edit_mode = (
-                    not st.session_state.analysis_edit_mode
-                )
-                st.rerun()
+                if st.session_state.analysis_edit_mode:
+                    if _update_chart_preview(result, progressions):
+                        st.session_state.analysis_edit_mode = False
+                        st.rerun()
+                else:
+                    st.session_state.analysis_edit_mode = True
+                    st.rerun()
         else:
             st.caption("Update before editing")
 
