@@ -345,16 +345,21 @@ def _apply_styles() -> None:
             z-index: 1000;
         }
         .chart-tooltip-candidate {
-            align-items: center;
+            align-items: flex-start;
             display: flex;
             gap: 0.4rem;
             margin: 0.2rem 0;
+        }
+        .chart-tooltip-candidate-details {
+            display: flex;
+            flex-direction: column;
         }
         .chart-tooltip-swatch {
             border: 1px solid #211f1b;
             border-radius: 0.15rem;
             flex: 0 0 0.8rem;
             height: 0.8rem;
+            margin-top: 0.15rem;
         }
         .chart-hover-match:hover .chart-tooltip,
         .chart-hover-match:focus-within .chart-tooltip {
@@ -949,33 +954,32 @@ def _matched_chord_html(
             f'aria-label="{escape(accessible_label)}, open progression lesson">'
             f"{chord_markup}</a>"
         )
-    candidate_rows = "".join(
-        '<div class="chart-tooltip-candidate">'
-        f'<span class="chart-tooltip-swatch" '
-        f'style="background-color: {progression_colors[candidate.progression.id]};">'
-        "</span>"
-        f"<span>{escape(details)}</span></div>"
-        for candidate, details in zip(candidates, candidate_details, strict=True)
-    )
+    candidate_rows = []
+    for candidate, details in zip(candidates, candidate_details, strict=True):
+        lesson_link = f"?lesson={quote(candidate.progression.id, safe='')}"
+        candidate_rows.append(
+            '<div class="chart-tooltip-candidate">'
+            f'<span class="chart-tooltip-swatch" '
+            f'style="background-color: {progression_colors[candidate.progression.id]};">'
+            "</span>"
+            '<div class="chart-tooltip-candidate-details">'
+            f"<span>{escape(details)}</span>"
+            f'<a href="{lesson_link}">Open progression lesson</a>'
+            "</div></div>"
+        )
+    candidate_markup = "".join(candidate_rows)
     tooltip_heading = (
         "Possible progression"
         if len(candidates) == 1
         else "Possible progressions"
     )
-    tooltip_link = ""
-    if link_progression is not None:
-        lesson_link = f"?lesson={quote(link_progression.id, safe='')}"
-        tooltip_link = (
-            f'<a href="{lesson_link}">Open progression lesson</a>'
-        )
     return (
         '<span class="chart-hover-match" tabindex="0" '
         f'aria-label="{escape(accessible_label)}">'
         f"{chord_markup}"
         '<span class="chart-tooltip" role="tooltip">'
         f"<strong>{tooltip_heading}</strong>"
-        f"{candidate_rows}"
-        f"{tooltip_link}"
+        f"{candidate_markup}"
         "</span></span>"
     )
 

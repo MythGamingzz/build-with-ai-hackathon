@@ -54,8 +54,14 @@ class ChartUiTests(unittest.TestCase):
             '<a class="chart-match-link" href="?lesson=I-vi-IV-V"',
             markup,
         )
-        self.assertIn('href="?lesson=I-vi-IV-V"', markup)
-        self.assertIn("Open progression lesson", markup)
+        self.assertIn(
+            '<a href="?lesson=I-vi-IV-V">Open progression lesson</a>',
+            markup,
+        )
+        self.assertGreater(
+            markup.index('<a href="?lesson=I-vi-IV-V">Open progression lesson</a>'),
+            markup.index("(I-vi-IV-V) in D"),
+        )
 
     def test_match_tooltip_escapes_progression_text(self) -> None:
         progression = replace(
@@ -96,7 +102,7 @@ class ChartUiTests(unittest.TestCase):
         self.assertNotIn("B*", markup)
         self.assertNotIn("User-corrected chord.", markup)
 
-    def test_shared_match_uses_mixed_colors_and_lists_each_candidate(self) -> None:
+    def test_shared_match_blends_colors_and_links_each_candidate(self) -> None:
         progressions = load_progressions()
         candidates = tuple(
             ProgressionCandidate(
@@ -123,7 +129,22 @@ class ChartUiTests(unittest.TestCase):
         self.assertIn(candidates[1].progression.name, markup)
         self.assertIn(" in C", markup)
         self.assertIn(" in D", markup)
-        self.assertNotIn("?lesson=", markup)
+        self.assertNotIn('class="chart-match-link"', markup)
+        self.assertEqual(
+            markup.count(">Open progression lesson</a>"),
+            len(candidates),
+        )
+        for candidate in candidates:
+            link = (
+                f'<a href="?lesson={candidate.progression.id}">'
+                "Open progression lesson</a>"
+            )
+            details = (
+                f"{candidate.progression.name} "
+                f"({candidate.progression.pattern}) in {candidate.key}"
+            )
+            self.assertIn(link, markup)
+            self.assertGreater(markup.index(link), markup.index(details))
 
     def test_undo_restores_original_beat_values_and_clears_feedback(self) -> None:
         state = SimpleNamespace(
