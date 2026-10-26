@@ -6,6 +6,7 @@ from numpy.typing import NDArray
 
 from cadence.audio_features import (
     HOP_LENGTH,
+    AudioFeatures,
     load_audio_features,
 )
 
@@ -116,6 +117,25 @@ def mask_low_energy_frames(
     masked = labels.copy()
     masked[rms <= threshold] = NO_CHORD_INDEX
     return masked
+
+
+def postprocess_model_labels(
+    predictions: NDArray[np.str_],
+    features: AudioFeatures,
+) -> NDArray[np.str_]:
+    if predictions.size != features.rms.size:
+        raise ValueError("Model predictions and RMS values must have equal lengths.")
+    if predictions.size == 0:
+        return predictions.copy()
+
+    chord_labels, encoded = np.unique(predictions, return_inverse=True)
+    encoded = smooth_labels(encoded, LABEL_SMOOTHING_FRAMES)
+    minimum_frames = round(MIN_CHORD_SECONDS * features.sample_rate / HOP_LENGTH)
+    encoded = merge_short_runs(encoded, minimum_frames)
+    processed = chord_labels[encoded].astype("<U8")
+    threshold = float(np.max(features.rms)) * MIN_RELATIVE_RMS
+    processed[features.rms <= threshold] = NO_CHORD_LABEL
+    return processed
 
 
 def chord_events(

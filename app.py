@@ -1,15 +1,20 @@
+import hashlib
 import math
 from pathlib import Path
 
 import streamlit as st
+from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 from cadence.audio_examples import generate_progression_wav
+from cadence.chord_model import DEFAULT_MODEL_PATH, ChordModelError
 from cadence.progression_data import (
     FREQUENCY_GROUPS,
     Progression,
     load_progressions,
     search_progressions,
 )
+from cadence.song_analysis import AudioAnalysisError, SongAnalysis, analyze_audio_bytes
+from cadence.song_metadata import KEY_CHOICES, TIME_SIGNATURES, bar_beat_position
 from cadence.theory import (
     MAJOR_KEYS,
     diatonic_chords,
@@ -140,6 +145,14 @@ def _initialize_state() -> None:
         "frequency_filter": "All",
         "selected_progression_id": None,
         "tutorial_step": 0,
+        "analysis_result": None,
+        "analysis_file_hash": None,
+        "analysis_title": "",
+        "analysis_key": None,
+        "analysis_tempo": None,
+        "analysis_time_signature": None,
+        "analysis_sections": [],
+        "analysis_layout": None,
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -516,16 +529,275 @@ def _render_lesson(progressions: tuple[Progression, ...]) -> None:
         _navigate("library")
 
 
-def _render_analysis_placeholder() -> None:
+def _metadata_strength(value: float) -> str:
+    if value < 0.05:
+        return "low"
+    if value < 0.2:
+        return "tentative"
+    return "stronger, but still heuristic"
+
+
+def _set_analysis_result(
+    uploaded_file: UploadedFile,
+    progressions: tuple[Progression, ...],
+) -> None:
+    audio_bytes = uploaded_file.getvalue()
+    st.session_state.analysis_result = None
+    try:
+        result = analyze_audio_bytes(
+            audio_bytes,
+            uploaded_file.name,
+            DEFAULT_MODEL_PATH,
+            progressions,
+        )
+    except (AudioAnalysisError, ChordModelError) as exc:
+        st.error(str(exc))
+        return
+
+    st.session_state.analysis_result = result
+    st.session_state.analysis_file_hash = hashlib.sha256(audio_bytes).hexdigest()
+    st.session_state.analysis_title = ""
+    st.session_state.analysis_key = result.metadata.key
+    st.session_state.analysis_tempo = (
+        round(result.metadata.tempo_bpm, 1)
+        if result.metadata.tempo_bpm is not None
+        else 120.0
+    )
+    st.session_state.analysis_time_signature = result.metadata.time_signature
+    st.session_state.analysis_layout = None
+    for key in list(st.session_state.keys()):
+        if key.startswith(("analysis_section_name_", "analysis_section_start_", "analysis_section_end_")):
+            del st.session_state[key]
+    tempo = float(st.session_state.analysis_tempo)
+    numerator, denominator = (
+        int(value)
+        for value in st.session_state.analysis_time_signature.split("/")
+    )
+    bar_seconds = 60.0 / tempo * 4.0 / denominator * numerator
+    total_bars = max(1, math.ceil(result.duration / bar_seconds))
+    st.session_state.analysis_sections = [
+        {"name": "Song", "start_bar": 1, "end_bar": total_bars, "whole_song": True}
+    ]
+
+
+def _render_analysis_sections(total_bars: int, layout_id: str) -> None:
+    st.subheader("Song sections")
+    st.caption(
+        "Mark or edit sections yourself; Cadence does not automatically detect "
+        "verse, chorus, or bridge boundaries."
+    )
+    updated_sections = []
+    for index, section in enumerate(st.session_state.analysis_sections):
+        name_key = f"analysis_section_name_{index}"
+        start_key = f"analysis_section_start_{layout_id}_{index}"
+        end_key = f"analysis_section_end_{layout_id}_{index}"
+        if name_key not in st.session_state:
+            st.session_state[name_key] = section["name"]
+        if start_key not in st.session_state:
+            st.session_state[start_key] = min(section["start_bar"], max(1, total_bars))
+        st.session_state[start_key] = min(
+            max(int(st.session_state[start_key]), 1),
+            max(1, total_bars),
+        )
+        if end_key not in st.session_state:
+            st.session_state[end_key] = section["end_bar"]
+        st.session_state[end_key] = min(
+            max(int(st.session_state[end_key]), int(st.session_state[start_key])),
+            max(1, total_bars),
+        )
+        name_column, start_column, end_column = st.columns((2, 1, 1))
+        with name_column:
+            name = st.text_input(
+                f"Section {index + 1} name",
+                key=name_key,
+            )
+        with start_column:
+            start_bar = st.number_input(
+                "Start bar",
+                min_value=1,
+                max_value=max(1, total_bars),
+                key=start_key,
+            )
+        with end_column:
+            end_bar = st.number_input(
+                "End bar",
+                min_value=int(start_bar),
+                max_value=max(1, total_bars),
+                key=end_key,
+            )
+        updated_sections.append(
+            {
+                "name": name,
+                "start_bar": int(start_bar),
+                "end_bar": int(end_bar),
+                "whole_song": (
+                    section.get("whole_song", False)
+                    and int(start_bar) == 1
+                    and int(end_bar) == total_bars
+                ),
+            }
+        )
+    st.session_state.analysis_sections = updated_sections
+    if st.button("Add section"):
+        next_index = len(updated_sections)
+        st.session_state.analysis_sections = updated_sections + [
+            {
+                "name": f"Section {next_index + 1}",
+                "start_bar": 1,
+                "end_bar": total_bars,
+                "whole_song": True,
+            }
+        ]
+        st.rerun()
+
+
+def _render_song_analysis(result: SongAnalysis) -> None:
+    st.warning(
+        "Chord, key, tempo, and time-signature values are experimental estimates. "
+        "Classifier scores are heuristic, not calibrated probabilities."
+    )
+    metadata = result.metadata
+    if metadata.tempo_bpm is None:
+        st.info("No stable tempo estimate was found. Enter or confirm the tempo below.")
+
+    key_column, tempo_column, meter_column = st.columns(3)
+    with key_column:
+        st.selectbox(
+            "Key (estimated; correct as needed)",
+            KEY_CHOICES,
+            key="analysis_key",
+        )
+        st.caption(f"Key estimate strength: {_metadata_strength(metadata.key_strength)}.")
+    with tempo_column:
+        tempo = st.number_input(
+            "Tempo in quarter-note BPM (estimated; correct as needed)",
+            min_value=30.0,
+            max_value=300.0,
+            step=1.0,
+            key="analysis_tempo",
+        )
+        st.caption(
+            "Tempo estimate strength: "
+            f"{_metadata_strength(metadata.tempo_strength)}."
+        )
+    with meter_column:
+        st.selectbox(
+            "Time signature (estimated; correct as needed)",
+            TIME_SIGNATURES,
+            key="analysis_time_signature",
+        )
+        st.caption(
+            f"Meter estimate strength: {_metadata_strength(metadata.meter_strength)}."
+        )
+
+    st.text_input("Song title", key="analysis_title")
+    if not st.session_state.analysis_title.strip():
+        st.info("Add a song title before making a performance chart.")
+    bar_seconds = (
+        60.0
+        / float(tempo)
+        * 4.0
+        / int(st.session_state.analysis_time_signature.split("/")[1])
+        * int(st.session_state.analysis_time_signature.split("/")[0])
+    )
+    total_bars = max(1, math.ceil(result.duration / bar_seconds))
+    layout = (float(tempo), st.session_state.analysis_time_signature)
+    if st.session_state.analysis_layout != layout:
+        adjusted_sections = []
+        for index, section in enumerate(st.session_state.analysis_sections):
+            if section.get("whole_song", False):
+                start_bar = 1
+                end_bar = total_bars
+            else:
+                start_bar = min(max(int(section["start_bar"]), 1), total_bars)
+                end_bar = min(max(int(section["end_bar"]), start_bar), total_bars)
+            adjusted_sections.append(
+                {
+                    "name": section["name"],
+                    "start_bar": start_bar,
+                    "end_bar": end_bar,
+                    "whole_song": section.get("whole_song", False),
+                }
+            )
+        st.session_state.analysis_sections = adjusted_sections
+        st.session_state.analysis_layout = layout
+    layout_id = f"{float(tempo):.3f}_{st.session_state.analysis_time_signature.replace('/', '_')}"
+    _render_analysis_sections(total_bars, layout_id)
+
+    st.subheader("Estimated chord spans")
+    first_beat = metadata.beat_times[0] if metadata.beat_times else 0.0
+    chord_rows = []
+    for event in result.events:
+        bar, beat = bar_beat_position(
+            event.start_seconds,
+            float(tempo),
+            st.session_state.analysis_time_signature,
+            first_beat,
+        )
+        chord_rows.append(
+            {
+                "Chord estimate": event.label,
+                "Start": f"{event.start_seconds:.2f}s",
+                "End": f"{event.end_seconds:.2f}s",
+                "Bar": bar,
+                "Beat": beat,
+                "Heuristic model score": round(event.score, 3),
+            }
+        )
+    if chord_rows:
+        st.dataframe(chord_rows, use_container_width=True, hide_index=True)
+    else:
+        st.info("No chord spans were produced for this recording.")
+
+    match = result.progression_match
+    if match.progression is not None:
+        st.success(
+            f"Possible databank match: {match.progression.name} in {match.key} "
+            "(heuristic; review the chord estimates)."
+        )
+        if st.button("Open the possible progression lesson"):
+            st.session_state.selected_progression_id = match.progression.id
+            _navigate("lesson")
+    elif match.ambiguous:
+        st.info(
+            "Several starter patterns could fit these chord estimates: "
+            f"{', '.join(match.candidate_names)}. No lesson link was selected."
+        )
+    else:
+        st.info(
+            "No close starter pattern matched these estimates. The chord spans "
+            "remain available without an unrelated lesson link."
+        )
+
+
+def _render_analysis(progressions: tuple[Progression, ...]) -> None:
     st.markdown('<p class="cadence-eyebrow">Local song workspace</p>', unsafe_allow_html=True)
     st.title("Analyze a local song")
-    st.info(
-        "Song analysis is the next build slice. For now, explore the progression "
-        "library; no audio is uploaded or processed on this screen."
+    st.write(
+        "Choose an audio file stored on this device. Cadence processes it locally "
+        "and does not accept streaming links."
     )
-    st.caption("When analysis is added, use only audio you are authorized to analyze.")
-    if st.button("Explore the progression library", type="primary"):
-        _navigate("library")
+    st.info("Only analyze audio you own or are otherwise authorized to use.")
+    uploaded_file = st.file_uploader(
+        "Local audio file",
+        type=("wav", "mp3"),
+        help="Supported formats: WAV and MP3. Full-band recordings are welcome.",
+        key="song_audio_upload",
+    )
+    if uploaded_file is not None and st.button("Analyze recording", type="primary"):
+        _set_analysis_result(uploaded_file, progressions)
+
+    result = st.session_state.analysis_result
+    if (
+        result is not None
+        and uploaded_file is not None
+        and hashlib.sha256(uploaded_file.getvalue()).hexdigest()
+        != st.session_state.analysis_file_hash
+    ):
+        st.info("A different file is selected. Analyze it to replace the current estimates.")
+        result = None
+    if result is not None:
+        _render_song_analysis(result)
 
 
 def main() -> None:
@@ -555,7 +827,7 @@ def main() -> None:
     elif page == "lesson":
         _render_lesson(progressions)
     elif page == "analysis":
-        _render_analysis_placeholder()
+        _render_analysis(progressions)
     else:
         st.error(f"Unknown Cadence screen: {page!r}")
         if st.button("Return home"):

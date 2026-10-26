@@ -25,12 +25,12 @@ from cadence.chords import (
     CHORD_LABELS,
     LABEL_SMOOTHING_FRAMES,
     MIN_CHORD_SECONDS,
-    MIN_RELATIVE_RMS,
     NO_CHORD_INDEX,
     NO_CHORD_LABEL,
     classify_chroma,
     mask_low_energy_frames,
     merge_short_runs,
+    postprocess_model_labels,
     smooth_labels,
 )
 
@@ -233,19 +233,7 @@ def _postprocess_model_labels(
     predictions: NDArray[np.str_],
     features: AudioFeatures,
 ) -> NDArray[np.str_]:
-    if predictions.size != features.rms.size:
-        raise ValueError("Model predictions and RMS values must have equal lengths.")
-    if predictions.size == 0:
-        return predictions.copy()
-
-    chord_labels, encoded = np.unique(predictions, return_inverse=True)
-    encoded = smooth_labels(encoded, LABEL_SMOOTHING_FRAMES)
-    minimum_frames = round(MIN_CHORD_SECONDS * features.sample_rate / HOP_LENGTH)
-    encoded = merge_short_runs(encoded, minimum_frames)
-    processed = chord_labels[encoded].astype("<U8")
-    threshold = float(np.max(features.rms)) * MIN_RELATIVE_RMS
-    processed[features.rms <= threshold] = NO_CHORD_LABEL
-    return processed
+    return postprocess_model_labels(predictions, features)
 
 
 def _score(
