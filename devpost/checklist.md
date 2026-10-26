@@ -19,7 +19,7 @@ Build mode: fast
   Learner check: Provide the five original tracks and chord references, review the timed labels and held-out song assignment, run the training command, and check that its output clearly shows what it learned and how the held-out comparison turned out.
   Commit: `Train and evaluate chord classifier`
 
-- [ ] **2. Explore and learn from a progression**
+- [x] **2. Explore and learn from a progression**
   Becomes usable: A visitor can open the local browser app, take or skip the paced keyboard-and-scale primer, search and filter the curated diatonic and selected non-diatonic progressions, open a lesson with a circle-of-fifths diagram and correct spellings in all 12 keys, and play its quieter, more spacious piano-like synthetic audio example.
   Why now: The databank is Cadence's educational core. Once the model-training risk is proven, this is the first complete visitor-facing experience and creates the lesson catalog that song estimates can later link to.
   PRD ref: `prd.md > The Core Journey`; `prd.md > Experience choice and beginner tutorial`; `prd.md > Searching and browsing the progression databank`; `prd.md > Understanding and hearing a progression`; `prd.md > Look and Feel`
@@ -51,7 +51,7 @@ Build mode: fast
 
 ## Hands-on Checkpoints
 
-- [ ] Early usable behavior explored — after Slice 2, try the step-by-step tutorial, search/filter, lesson diagrams, all-key chord spellings, and quieter/spaced synthetic audio; report what is clear or confusing while the analysis and chart work can still benefit from feedback.
+- [x] Early usable behavior explored — after Slice 2, try the step-by-step tutorial, search/filter, lesson diagrams, all-key chord spellings, and quieter/spaced synthetic audio; report what is clear or confusing while the analysis and chart work can still benefit from feedback.
 - [ ] Core journey explored — after Slice 3, run the trained-model analysis flow, correct estimates, add sections, and report any confusing parts before PDF export is finalized.
 - [ ] Final kick-the-tires exploration and feedback completed — after Slice 4, explore the complete demo, try an awkward search and an uncertain/no-match result, export a chart, and report anything broken or worth changing.
 
