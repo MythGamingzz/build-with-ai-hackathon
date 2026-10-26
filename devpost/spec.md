@@ -82,27 +82,27 @@ Implements `prd.md > Experience choice and beginner tutorial`.
 
 ### Beginner Scale Tutorial
 
-Explains diatonic triad qualities I, ii, iii, IV, V, vi, and vii° using a key-C example, with a concise explanation of diminished symbols. It is content, not a quiz.
+`app.py` presents a seven-step tutorial: animated greeting; W–W–H–W–W–W–H before any scale example; piano note names with unhighlighted and full-gold C-major-highlighted keyboard diagrams; C-major/D-major comparison; diatonic triad table; circle of fifths; and circle of fourths. The two circles and chord table have separate steps. Explain the circles as maps for seeing related roots and following common chord movement, with D–G–C shown as descending fifths and ascending fourths. Next/Back navigation is available throughout, with skip before the last step and one finish action at the end. The home screen retains its standard library action without a redundant skip button. It is content, not a quiz.
 Implements `prd.md > Experience choice and beginner tutorial`.
 
 ### Progression Data and Databank
 
-`data/progressions.json` holds stable IDs, names, Roman-numeral sequences, chord degrees/qualities, curated frequency groups, explanations, theory notes, and diagram data. Streamlit searches by name or sequence and filters by frequency. Frequency labels remain curated guidance.
+`data/progressions.json` holds stable IDs, names, Roman-numeral sequences, chord degrees and qualities, curated frequency groups, explanations, theory notes, and diagram data. It contains the diatonic starter set plus I–III–vi, I–III–IV, v–I–IV, and I–II–IV in the less-common group. `src/cadence/progression_data.py` validates and searches this content, then returns matches ordered by group. Frequency labels remain curated guidance, shown with both text and color.
 Implements `prd.md > Searching and browsing the progression databank`.
 
 ### Scale and Key Theory
 
-`src/cadence/theory.py` maps the seven diatonic scale degrees and triad qualities to note names in all 12 major keys and provides lesson chord spellings. It does not infer a song key.
+`src/cadence/theory.py` maps diatonic and specified major/minor triads to correctly spelled note names in all 12 major keys, including the raised/lowered chord tones in the four selected chromatic patterns. It provides the keyboard and circle-of-fifths pitch data; it does not infer a song key.
 Implements `prd.md > Experience choice and beginner tutorial` and `prd.md > Understanding and hearing a progression`.
 
 ### Progression Lesson and Diagrams
 
-`app.py` renders the selected progression's explanation, theory diagram, chord spellings across keys, synthetic sample, and navigation back to the library. Diagrams are generated locally without remote assets.
+`app.py` renders the selected progression's explanation, local circle-of-fifths diagram with progression roots highlighted, chord spellings across keys, quieter/spaced piano-like synthetic sample, and navigation back to the library. Diagrams are generated locally without remote assets.
 Implements `prd.md > Understanding and hearing a progression`.
 
 ### Synthetic Audio Examples
 
-`src/cadence/audio_examples.py` generates short, original WAV examples from the starter progression notes and a simple synthesized tone/envelope. They illustrate the pattern but do not sound like a recorded band.
+`src/cadence/audio_examples.py` generates original WAV examples from the progression's chord degrees and qualities using a fundamental, soft harmonics, and an attack/decay envelope for a piano-like tone. Each chord is quieter, lasts longer, and has a silence gap before the next. These are synthesized, not recorded or sampled piano sounds.
 Implements `prd.md > Understanding and hearing a progression`.
 
 ### Shared Audio Features and Existing Baseline
@@ -155,13 +155,13 @@ Use synthetic audio and small synthetic annotation tables for automated checks; 
 - Chord event timing, candidate key/tempo/meter behavior, confidence/uncertain paths, and bar alignment.
 - Pattern matching for known, ambiguous, and no-match sequences.
 - PDF output has a valid PDF header, includes the requested chart fields on manual inspection, and remains readable across multiple pages for long charts.
-- Existing theory, progression content, synthetic WAV, and private CLI tests still pass.
+- Theory tests cover all-key spellings for the selected chromatic qualities; progression tests validate degree/quality/Roman-numeral agreement and group ordering; synthetic WAV tests verify quieter output and chord/rest timing; existing private CLI tests still pass.
 
 Implements acceptance criteria from all `prd.md > Features and Behavior` headings.
 
 ## Data Model
 
-- **Progression entry** (`data/progressions.json`): `id`, `name`, `roman_numerals`, `degrees`/qualities, `frequency`, `description`, `theory_relationship`, and optional diagram data. Checked-in educational content.
+- **Progression entry** (`data/progressions.json`): `id`, `name`, `roman_numerals`, `degrees`, `qualities`, `frequency`, `description`, `theory_relationship`, and optional diagram data. Checked-in educational content.
 - **Training annotation** (`data/training/annotations.csv`): `song_id`, `audio_path`, `start_seconds`, `end_seconds`, and `chord_label`. The learner's chart is a human reference; it is converted to these timed labels before training. Audio and annotation assets are the five learner-approved original songs.
 - **Train/holdout split** (`data/training/split.json`): song IDs assigned to the training set or the single held-out song. Split by song, not by audio frame.
 - **Trained model** (`models/chord_classifier.joblib`): fitted classifier generated by the owner training command and loaded by the local app. Add a narrow `.gitignore` exception for this approved public artifact while keeping all other private `/models/` contents ignored, so a fresh checkout can run the analyzer without exposing unrelated model files.
@@ -188,6 +188,7 @@ Build With AI/
 ├── src/cadence/
 │   ├── audio_features.py                # Shared local audio loading/chroma
 │   ├── audio_examples.py                # Synthetic WAV lesson examples
+│   ├── progression_data.py              # Validated progression catalog and search
 │   ├── chart_pdf.py                     # Printable PDF generation
 │   ├── chord_model.py                   # Load model and predict chord events
 │   ├── chords.py                        # Existing template baseline and CLI support
@@ -200,9 +201,11 @@ Build With AI/
 │   └── transcription.py                 # Existing private word-estimation component
 ├── tests/
 │   ├── test_audio_features.py
+│   ├── test_audio_examples.py
 │   ├── test_chart_pdf.py
 │   ├── test_chord_model.py
 │   ├── test_matching.py
+│   ├── test_progressions.py
 │   ├── test_song_metadata.py
 │   ├── test_theory.py
 │   ├── test_training.py

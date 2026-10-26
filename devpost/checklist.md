@@ -20,13 +20,13 @@ Build mode: fast
   Commit: `Train and evaluate chord classifier`
 
 - [ ] **2. Explore and learn from a progression**
-  Becomes usable: A visitor can open the local browser app, take or skip the beginner primer, search and filter the curated progression databank, open a lesson with theory and chord spellings in all 12 keys, and play its original synthetic audio example.
+  Becomes usable: A visitor can open the local browser app, take or skip the paced keyboard-and-scale primer, search and filter the curated diatonic and selected non-diatonic progressions, open a lesson with a circle-of-fifths diagram and correct spellings in all 12 keys, and play its quieter, more spacious piano-like synthetic audio example.
   Why now: The databank is Cadence's educational core. Once the model-training risk is proven, this is the first complete visitor-facing experience and creates the lesson catalog that song estimates can later link to.
   PRD ref: `prd.md > The Core Journey`; `prd.md > Experience choice and beginner tutorial`; `prd.md > Searching and browsing the progression databank`; `prd.md > Understanding and hearing a progression`; `prd.md > Look and Feel`
   Spec ref: `spec.md > Stack`; `spec.md > Where It Runs and How Someone Tries It`; `spec.md > Look and Feel`; `spec.md > Components > Streamlit App and Experience Choice`; `spec.md > Components > Beginner Scale Tutorial`; `spec.md > Components > Progression Data and Databank`; `spec.md > Components > Scale and Key Theory`; `spec.md > Components > Progression Lesson and Diagrams`; `spec.md > Components > Synthetic Audio Examples`; `spec.md > Data Model`; `spec.md > File Structure`
-  Build: Add the Streamlit app within the existing Python project; implement experience choice, the optional major-scale tutorial, curated diatonic progression content, search and frequency filters, lesson explanations/diagrams, chord spellings across all keys, and locally generated synthetic WAV examples. Keep frequency groups identified as curated guidance and preserve the existing private CLI experiment.
-  Verify (mechanical): Run `.venv\Scripts\python.exe -m unittest discover -s tests`; start `.venv\Scripts\python.exe -m streamlit run app.py` and confirm it responds at `http://localhost:8501`; verify tests for diatonic chord qualities/spellings, progression data, and valid generated WAV audio.
-  Learner check: Open the app, choose beginner, take or skip the primer, search for I–vi–ii–V, filter its frequency group, open the lesson, compare its explanation and chord spellings in different keys, and play the example. Tell me what feels clear or confusing.
+  Build: Add the Streamlit app within the existing Python project; implement experience choice, the seven-step optional tutorial with keyboard/scale visuals and separate chord-table/fifths/fourths lessons, curated diatonic progressions plus I–III–vi, I–III–IV, v–I–IV, and I–II–IV, ordered frequency groups with green/yellow/red labels, lesson explanations and circle diagrams, correct chord spellings across all keys, and quieter/spaced piano-like locally generated WAV examples. Keep frequency groups identified as curated guidance and preserve the existing private CLI experiment.
+  Verify (mechanical): Run `.venv\Scripts\python.exe -m unittest discover -s tests`; start `.venv\Scripts\python.exe -m streamlit run app.py` and confirm it responds at `http://localhost:8501`; verify tutorial ordering and controls, separate circle/table views, all-key chromatic chord spellings, progression validation and ordering, and generated WAV level/timing/decay coverage.
+  Learner check: Open the app, choose beginner, check that W–W–H–W–W–W–H comes before the scales, compare the two piano diagrams and C/D scale displays, inspect the separate chord table and circles, and use Back/Next and the final finish action. Confirm the home screen has no redundant skip-to-library action but still offers the library. Then search for I–III–vi, confirm it is in the less-common group, open its lesson, inspect the circle diagram and chord spellings in different keys, and play the example. Tell me what feels clear or confusing.
   Commit: `Build searchable progression learning databank`
 
 - [ ] **3. Analyze a local song and review its estimates**
@@ -51,7 +51,7 @@ Build mode: fast
 
 ## Hands-on Checkpoints
 
-- [ ] Early usable behavior explored — after Slice 2, try the tutorial, search/filter, lesson, all-key chord spellings, and synthetic audio; report what is clear or confusing while the analysis and chart work can still benefit from feedback.
+- [ ] Early usable behavior explored — after Slice 2, try the step-by-step tutorial, search/filter, lesson diagrams, all-key chord spellings, and quieter/spaced synthetic audio; report what is clear or confusing while the analysis and chart work can still benefit from feedback.
 - [ ] Core journey explored — after Slice 3, run the trained-model analysis flow, correct estimates, add sections, and report any confusing parts before PDF export is finalized.
 - [ ] Final kick-the-tires exploration and feedback completed — after Slice 4, explore the complete demo, try an awkward search and an uncertain/no-match result, export a chart, and report anything broken or worth changing.
 
@@ -74,6 +74,8 @@ Activity mode: Not started.
 ## Revisions
 
 - Included Daug and Eaug as distinct chord labels and recorded chart simplification rules — the learner chose to retain augmented triads, while Demo 5 is their only source; keep that song in training and disclose that cross-song performance cannot be evaluated.
+- Reopened the diatonic-only library boundary at the learner's request — add I–III–vi, I–III–IV, v–I–IV, and I–II–IV as curated less-common examples, while keeping every diatonic pattern in frequent or medium; teach the changed chord quality rather than presenting these as ordinary diatonic chords.
+- Revised the tutorial and audio after hands-on review — introduce the scale formula before scale diagrams, show unhighlighted and full-gold C-major keyboard diagrams, explain the purpose of each separate circle, separate the chord table and circle lessons, remove redundant skip actions, and use a piano-like synthetic envelope without adding recorded or licensed assets.
 - Verified and corrected the supplied audio/chart references — all five MP3s decode locally; `Solo_Demo_1.mp3` is the intended Demo 1 audio; Demo 3's first numbered bar starts around 00:00:12; Demo 4 bar 123 is F major and its corrected ending is bars 147–149. Treat bar-derived times as approximate and review alignment against audio before training.
 - Selected Demo 3 as the whole-song holdout after confirming Demo 5 must remain in training for the augmented labels — any held-out label absent from the four training songs will be reported and counted as an evaluation miss.
 - Corrected Demo 2 bars 1–8 per learner clarification: G is labeled only on beat 1 of bars 1 and 5, with the remaining time labeled `N` (no chord); added a regression test for these intervals.

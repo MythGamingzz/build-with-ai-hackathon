@@ -23,7 +23,7 @@ Cadence demonstrates an educational databank and a small, honest model-training 
 ## Screens and Layout
 
 - **Welcome and experience choice:** Ask whether the visitor is new to music or has some experience. Beginners can open or skip the tutorial, then choose the databank or song analysis.
-- **Beginner tutorial:** A short, skippable explanation of the major scale and its diatonic chord qualities.
+- **Beginner tutorial:** A skippable, step-by-step primer: introduce W–W–H–W–W–W–H before showing scales; compare unhighlighted piano keys with C-major highlights; compare C major and D major; show the seven diatonic chord qualities; then teach the circles of fifths and fourths in separate steps. Visitors can move forward or back. The final step has one clear finish action rather than a skip action.
 - **Progression databank:** Search and frequency filter above a compact grid of progression cards.
 - **Progression lesson:** A selected progression's explanation, relevant theory diagram, chord spellings, and playable example.
 - **Song analysis and chart preview:** Local audio selection, chord estimates, estimated key/tempo/time signature, editable song title and section labels, controls to correct musical metadata, and a preview of the bar/beat chart before PDF export.
@@ -41,6 +41,9 @@ Source: `scope.md > The Core Loop`, `The POC Boundary`.
 
 - Ask whether the visitor is new to music or has some experience.
 - Beginners can start a short tutorial or skip it and continue to either the databank or song analysis.
+- Present the tutorial as paced screens with Next/Back navigation and a skip option before the last step. Begin with a welcoming animated hello, introduce the W–W–H–W–W–W–H formula before showing a scale, then show piano note names beside a separate C-major-highlighted keyboard, compare C major and D major visually, and show the major-scale chord primer.
+- Teach the major-scale chord table, circle of fifths, and circle of fourths in separate tutorial steps. Explain that the circles organize related note roots and help musicians follow common chord movement; show how D–G–C moves down by fifths on one circle and up by fourths on the other.
+- After the tutorial, take the visitor to the learning home; do not add a second “skip to progression library” button there because the ordinary library action is already available.
 - Explain the major scale and diatonic chord qualities I, ii, iii, IV, V, vi, and vii°.
 - If it fits the brief explanation, show vii° as a possible V/vii slash-chord substitution; this is supporting context, not an extra lesson.
 - The tutorial is educational content, not a test; learner ratings and saved course progress are not required.
@@ -49,6 +52,11 @@ Source: `scope.md > The Core Loop`, `The POC Boundary`.
 - [ ] A first-time visitor can choose an experience level and reach the tutorial or skip it.
 - [ ] Skipping the tutorial still allows access to both the databank and song-analysis entry point.
 - [ ] The tutorial identifies the seven diatonic major-scale chord qualities and distinguishes major, minor, and diminished symbols clearly.
+- [ ] The tutorial supports Next/Back navigation and visually shows keyboard notes, C/D major scale differences, the whole/half-step formula, and the diatonic chord primer.
+- [ ] The W–W–H–W–W–W–H formula appears before the first scale example; the piano diagram shows note names on an unhighlighted keyboard and clearly highlights C-major notes in a second diagram.
+- [ ] The major chord table, circle-of-fifths lesson, and circle-of-fourths lesson appear separately, with local diagrams and explanations of each circle's purpose.
+- [ ] The final tutorial step offers a single finish action and no skip action.
+- [ ] The post-tutorial home screen has no redundant “skip to progression library” action, while the standard library entry point remains available.
 
 ### Searching and browsing the progression databank
 
@@ -57,19 +65,21 @@ Source: `scope.md > The Unique Kernel`, `The Core Loop`, `The POC Boundary`.
 - Search progression entries by their name or Roman-numeral pattern.
 - Filter by curated frequency group: frequent, medium, or less common.
 - Show a compact grid; each card identifies the progression and its frequency group.
-- The starter collection focuses on diatonic major-key patterns and excludes the out-of-scale II, III, and v examples.
+- Keep all diatonic progressions in the frequent or medium groups. Include these four learner-requested non-diatonic examples in the less-common group: I–III–vi, I–III–IV, v–I–IV, and I–II–IV. Explain the altered chord quality and the scale note that changes in each key.
 - Frequency is curated learning guidance, not a statistically measured ranking across all online songs.
 - Seed examples include:
   - **Frequent:** I–vi–IV–V, vi–IV–I–V, I–IV–V–I, ii–V–I.
-  - **Medium:** I–V–vi–IV, I–vi–ii–V.
-  - **Less common:** additional diatonic progressions selected for the small starter collection.
+  - **Medium:** I–V–vi–IV, I–vi–ii–V, I–ii–IV–V, iii–vi–ii–V, and vi–ii–V–I.
+  - **Less common:** I–III–vi, I–III–IV, v–I–IV, I–II–IV.
+- Order the grid by group (frequent, medium, less common) and identify each group with a clear text label and green/yellow/red visual treatment.
 - Search or filter with no matching entry shows a clear empty state and lets the visitor adjust the query or filter.
 
 **Acceptance criteria**
 - [ ] Searching by a progression name or Roman-numeral sequence can find the matching entry.
 - [ ] Selecting a frequency group limits the visible cards to that group; clearing the filter restores all entries.
 - [ ] Every card shows a progression name, Roman-numeral sequence, and frequency group.
-- [ ] The starter set contains the learner-ranked examples, and any less-common entries stay diatonic.
+- [ ] Every diatonic entry is frequent or medium, and the four selected non-diatonic entries are in less common.
+- [ ] Frequency labels are visually distinct, text-labeled, and clearly described as curated guidance rather than measured statistics.
 - [ ] A query with no match displays an explicit “no progressions found” state rather than a blank grid.
 
 ### Understanding and hearing a progression
@@ -79,13 +89,15 @@ Source: `scope.md > The Unique Kernel`, `The Core Loop`, `What "Working" Looks L
 - Opening a card shows the progression name and Roman-numeral sequence, its curated frequency group, a concise explanation of how it is derived or applied, a relevant theory diagram when useful, and an audio example.
 - The explanation connects chord movement to the major scale and, where relevant, the circle of fourths/fifths or another useful theory idea.
 - For ii–V–I, the explanation may show roots moving by fourths (equivalently, fifths in the opposite direction) and explain how landing on I gives a sense of resolution.
-- The audio example can be played and stopped; transposition or modulation is not needed.
+- Show a locally rendered circle-of-fifths diagram in the lesson, highlighting the progression's roots, and explain how it relates to the chord movement.
+- Make the synthetic example quieter and give chords more time and space between changes. Use a piano-like, decaying synthetic timbre; it need not be a sampled or recorded piano. Transposition or modulation is not needed.
 - Real-song examples are not required for the first version.
 
 **Acceptance criteria**
 - [ ] Opening a card reveals its explanation and diagram, if provided, without losing the ability to return to the grid.
-- [ ] Each starter entry has a playable audio example that illustrates its progression.
+- [ ] Each starter entry has a playable, piano-like synthetic audio example that illustrates its progression.
 - [ ] Explanations describe a meaningful relationship behind each pattern rather than only restating its chord symbols.
+- [ ] Lessons correctly spell diatonic and selected non-diatonic chords in all 12 major keys and show the circle-of-fifths diagram.
 - [ ] Audio playback failure is explained, and the written progression and lesson remain usable.
 
 ### Training and evaluating the chord model
@@ -168,15 +180,15 @@ Source: `scope.md > The Core Loop`, `What "Working" Looks Like`, `The POC Bounda
 - Let visitors analyze authorized local audio, including full-band recordings, while clearly labeling model outputs as experimental.
 - Estimate key, tempo, and time signature in the app and allow visitors to correct those values. Visitors supply the song title and mark or edit song sections.
 - Include a printable PDF performance chart with chord positions by bar/beat; do not build automatic song-section detection.
-- Use the learner's ranked starter groups: frequent (I–vi–IV–V, vi–IV–I–V, I–IV–V–I, ii–V–I), medium (I–V–vi–IV, I–vi–ii–V), plus some less-common diatonic examples.
+- Use the learner's ranked starter groups: frequent (I–vi–IV–V, vi–IV–I–V, I–IV–V–I, ii–V–I), medium (the remaining diatonic examples), and less common (I–III–vi, I–III–IV, v–I–IV, I–II–IV).
 - Explain frequency groups as curated learning guidance, not a survey.
-- Focus the beginner path on the major scale and diatonic chord qualities; keep II, III, and v out of the starter set.
+- Start the beginner path with the major scale and diatonic chord qualities, then identify the altered note in each selected non-diatonic example.
 - Use a warm, minimal jazz-club visual mood with restrained decorative details.
 
 ## What We're Building
 
 - Welcome experience choice and a short optional major-scale primer.
-- A small searchable/filterable databank of diatonic major-key progressions with lessons and synthetic audio.
+- A small searchable/filterable databank of diatonic major-key progressions and four selected non-diatonic patterns, with lessons and synthetic audio.
 - A reproducible training run and held-out evaluation for a chord-label model trained from the learner's labeled original recordings.
 - Local analysis of visitor-provided audio using the pre-trained model, with estimated and editable key/tempo/time-signature details.
 - A bar/beat chord chart with user-provided title and section labels, exportable as a printable PDF.
@@ -209,6 +221,6 @@ Source: `scope.md > The Core Loop`, `What "Working" Looks Like`, `The POC Bounda
 
 ## Open Questions
 
-- Which exact less-common diatonic patterns should seed the starter collection? Can be finalized while preparing lesson content.
+- Resolved: the learner selected I–III–vi, I–III–IV, v–I–IV, and I–II–IV for the less-common group because they appear in Demo 4.
 - Which chord-label vocabulary and local audio formats can the model support reliably? Settle the bounded label set and WAV/MP3 behavior in `4-spec` before implementation.
 - What training-label file format is simplest for the learner to prepare from their annotated recordings? Decide in `4-spec`; automatic PDF reading is deferred.

@@ -7,42 +7,49 @@ status: approved
 
 Resolve Every Song.
 
-A local music-analysis experiment that estimates chords and transcribes sung lyrics from a short learner-provided piano-and-vocal recording.
+An educational chord-progression databank paired with a small local experiment that learns chord labels from annotated original recordings and estimates chords in new local songs.
 
 ## The Unique Kernel
-Help a musician review their own recording by placing estimated chord changes alongside the words they sang, so they can compare the analysis with what they intended to play.
+Cadence helps musicians understand why familiar progressions work, then connects that learning library to a transparent experiment: train a model to predict chord labels from the team's own annotated recordings, use it to estimate chords in new local songs, and derive likely progression patterns from those predictions. The project demonstrates what the model learns on held-out music without claiming reliable transcription of arbitrary songs.
 
 ## Who It's For
-Musicians experimenting with how software can identify chords and words in a recording they made themselves.
+Musicians who want to understand the patterns behind chord progressions, especially beginners who have played from chord sheets without knowing why the chords work, and curious musicians who want to see how a small chord-learning model is trained and evaluated.
 
 ## The Core Loop
-The musician provides a short local piano-and-vocal recording. A local Python analysis tool estimates sung words and chord changes with timestamps, then presents the two on a shared timeline. The musician compares those estimates with a hand-checked reference for the recording and notes where the analysis succeeded or failed.
+The musician chooses their experience level and can take a short major-scale tutorial. They search the progression databank, listen to an example, and learn the theory behind a pattern. In the training experiment, the team provides original recordings with chord changes annotated by bar or approximate time and trains a chord-label predictor. A visitor can then provide an authorized local song to see experimental chord estimates and derived progression candidates, correct estimated musical details, mark song sections, and export a printable bar-and-beat chord chart.
 
 ## Inspiration & Identity
-Keep the analysis transparent: distinguish software estimates from the musician's verified reference and make timing and mismatches easy to inspect.
+Make music theory feel like discovering patterns rather than memorizing rules. Keep explanations approachable, examples easy to compare by ear, and frequency labels clearly identified as curated learning guidance rather than measured internet-wide statistics. Keep the model experiment local, understandable, and honest about its limits.
 
 ## Why This Matters to the Learner
-The team wants to explore whether software can make chord transcription more efficient. Timothy will provide a piano-and-vocal recording for the first experiment.
+Timothy described playing from chord notes without thinking much about why the chords were used. Discovering that scales, the circle of fourths/fifths, and other relationships create patterns made it exciting to explore progressions instead of guessing. He also wants to explore training a chord model on his own original songs.
 
 ## What "Working" Looks Like
-In a private local demonstration, the musician runs the tool on one piano-and-vocal recording. It produces time-stamped word and chord estimates, displays them together, and compares them with a hand-checked reference. The demonstration shows the analysis process and its observed errors; one recording does not establish reliable results on other songs.
+In a short public demo, a newcomer learns a major-scale chord quality, finds and hears a familiar progression, and understands why its chord movement works. The demo then shows the model trained on annotated original recordings, estimates chords in a new local song, and turns those labels into an uncertain progression candidate that can open a related lesson. The visitor can correct estimated key, tempo, and time signature, add a title and section labels, and print a chord chart. The team also evaluates predictions against reference labels on a song kept out of training. The measured result may be imperfect; the demo succeeds by showing the training and an honest evaluation, not by promising high accuracy.
 
 ## The POC Boundary
-- A local Python analysis experiment, not a deployed website.
-- One short, locally stored PCM WAV recording with piano accompaniment and Timothy's own sung vocal.
-- Automatic sung-word transcription and word/segment timing using an existing locally runnable speech-recognition tool, if its license and singing performance are suitable.
-- Estimated chord labels and time ranges using a separately evaluated chord-analysis tool, which may use signal processing rather than a trained AI model.
-- A readable report that places estimated lyrics and chords together and compares them with a manually checked reference.
-- Keep the recording local; do not send it to a hosted service.
-- Keep the recording, transcript, reference, and generated report private; do not publish this recording or its analysis as a demo.
-- Report observed results honestly; this experiment does not promise high accuracy or generalization.
+- Keep the searchable, listenable progression databank and beginner-friendly lessons as the product's educational core.
+- Include a paced, skippable major-scale tutorial that introduces the whole/half-step pattern before scale examples, then teaches piano note names, compares C and D major, and presents the chord primer and circles of fifths and fourths separately, explaining how each circle helps musicians understand related keys and chord movement.
+- Include a small curated set of diatonic major-key progressions and four learner-requested non-diatonic patterns (I–III–vi, I–III–IV, v–I–IV, and I–II–IV), with explanations, theory diagrams, all-key spellings, and original piano-like synthetic audio. Keep diatonic patterns in frequent/medium and the four chromatic patterns in less common; these are curated learning groups, not measured prevalence.
+- Add a small, local supervised experiment that learns individual chord labels from the learner's original recordings annotated with chord changes and approximate bar or time boundaries.
+- Let a visitor provide an authorized local audio file for experimental chord predictions from the trained model; keep audio processing local and make uncertainty visible.
+- Derive progression candidates from predicted chord labels using a clear deterministic step; do not train a separate progression model.
+- Let visitors correct estimated key, tempo, and time signature, enter a song title, mark or edit section names, and export a printable chart with chord placements by bar and beat.
+- Evaluate on at least one original song held out from training when the available recordings allow it. Show the reference labels beside predictions and report limitations; if the dataset is too small for a meaningful song-level holdout, say so rather than implying generalization.
+- Full-band recordings are allowed; instrument separation is not required. Their more complex mix may make chord prediction harder.
+- The learner confirmed that the original recordings and performances are theirs and may be shared publicly. Keep the public demo and repository limited to those authorized original assets and their annotations.
+- Keep all model predictions experimental; do not claim accurate recognition of arbitrary songs.
+- Do not automatically identify verse/chorus/bridge sections; visitors mark or edit those labels for the printout.
 
 ## Later
-- Test additional original or appropriately licensed recordings and instruments.
-- Explore training or fine-tuning a model using a larger, properly licensed, hand-labeled dataset.
-- Consider a web interface or a broader musician-facing application after local analysis feasibility is demonstrated.
+- More annotated songs, musical styles, keys, chord qualities, and a larger training/evaluation set.
+- Better model performance after measuring errors and gathering additional rights-cleared labeled material.
+- Broader local-song analysis, instrument separation, a deployed product, accounts, and saved personal collections.
+- A sourced frequency survey based on a defined, representative, properly licensed song collection.
 
 ## Explicitly Cut
-- YouTube/Spotify link ingestion, downloading from platforms, and analysis of songs without authorization are outside this experiment.
-- Guitar, bass, drums, multiple simultaneous instrument tracks, and arbitrary user songs are not part of the first recording test.
-- Training a new model from scratch, claims of high accuracy, a hosted service, a web application, song repository, history, settings, playback controls, transposition, and music-theory lessons are not part of this first prototype.
+- A general-purpose analyzer that promises accurate recognition on arbitrary songs; user-provided song results remain experimental, and the training experiment is a small, measured proof of concept.
+- A separately trained progression classifier; progression candidates are derived from chord predictions so the experiment stays small and inspectable.
+- Streaming links, platform downloads, hosted inference, or uploading audio to a remote service.
+- A broad catalog of chromatic progressions beyond the four selected examples; the beginner path still starts with ordinary diatonic major-scale chord qualities.
+- An exhaustive, objectively ranked internet-wide progression catalog; curated frequency groups are learning guidance, not survey results.

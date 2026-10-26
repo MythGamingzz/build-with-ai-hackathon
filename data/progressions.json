@@ -1,0 +1,145 @@
+[
+  {
+    "id": "I-vi-IV-V",
+    "name": "The familiar four-chord loop",
+    "roman_numerals": ["I", "vi", "IV", "V"],
+    "degrees": [1, 6, 4, 5],
+    "qualities": ["major", "minor", "major", "major"],
+    "frequency": "frequent",
+    "description": "A bright major-key start moves to the relative minor, then builds through IV to V before resolving back to I.",
+    "theory_relationship": "All four chords come from the same major scale. The movement alternates stability and lift, with V creating a clear pull toward I.",
+    "diagram": "degree-flow"
+  },
+  {
+    "id": "vi-IV-I-V",
+    "name": "The relative-minor opening",
+    "roman_numerals": ["vi", "IV", "I", "V"],
+    "degrees": [6, 4, 1, 5],
+    "qualities": ["minor", "major", "major", "major"],
+    "frequency": "frequent",
+    "description": "Beginning on vi gives the loop a more reflective color before it opens into the major tonic.",
+    "theory_relationship": "vi shares two notes with I, so it can feel related while changing the emotional starting point. IV and V then lead back toward the home chord.",
+    "diagram": "degree-flow"
+  },
+  {
+    "id": "I-IV-V-I",
+    "name": "The tonic, subdominant, and dominant",
+    "roman_numerals": ["I", "IV", "V", "I"],
+    "degrees": [1, 4, 5, 1],
+    "qualities": ["major", "major", "major", "major"],
+    "frequency": "frequent",
+    "description": "This direct route leaves the home chord, increases tension, and returns to the tonic.",
+    "theory_relationship": "IV moves away from I, while V contains the leading tone that strongly points back to I.",
+    "diagram": "degree-flow"
+  },
+  {
+    "id": "ii-V-I",
+    "name": "The ii–V–I cadence",
+    "roman_numerals": ["ii", "V", "I"],
+    "degrees": [2, 5, 1],
+    "qualities": ["minor", "major", "major"],
+    "frequency": "frequent",
+    "description": "A compact three-chord cadence that moves from preparation, through dominant tension, to resolution.",
+    "theory_relationship": "The roots descend by fifths (or rise by fourths): ii to V to I. The leading tone in V resolves upward to the tonic.",
+    "diagram": "degree-flow"
+  },
+  {
+    "id": "I-V-vi-IV",
+    "name": "The I–V–vi–IV loop",
+    "roman_numerals": ["I", "V", "vi", "IV"],
+    "degrees": [1, 5, 6, 4],
+    "qualities": ["major", "major", "minor", "major"],
+    "frequency": "medium",
+    "description": "A tonic-and-dominant opening turns toward the relative minor, then settles on IV before repeating.",
+    "theory_relationship": "The shared major scale keeps the progression cohesive; vi provides contrast after the strong I-to-V motion.",
+    "diagram": "degree-flow"
+  },
+  {
+    "id": "I-vi-ii-V",
+    "name": "The I–vi–ii–V cycle",
+    "roman_numerals": ["I", "vi", "ii", "V"],
+    "degrees": [1, 6, 2, 5],
+    "qualities": ["major", "minor", "minor", "major"],
+    "frequency": "medium",
+    "description": "A four-chord cycle that moves from tonic through two related minor chords toward the dominant.",
+    "theory_relationship": "The roots vi, ii, and V move by descending fifths (or ascending fourths). V then points back to I.",
+    "diagram": "degree-flow"
+  },
+  {
+    "id": "I-ii-IV-V",
+    "name": "The stepwise lift",
+    "roman_numerals": ["I", "ii", "IV", "V"],
+    "degrees": [1, 2, 4, 5],
+    "qualities": ["major", "minor", "major", "major"],
+    "frequency": "medium",
+    "description": "The bass begins at home and climbs through the second and fourth scale degrees before reaching V.",
+    "theory_relationship": "The rising scale-degree roots create forward motion while every chord remains diatonic to the major key.",
+    "diagram": "degree-flow"
+  },
+  {
+    "id": "iii-vi-ii-V",
+    "name": "The descending-fifths chain",
+    "roman_numerals": ["iii", "vi", "ii", "V"],
+    "degrees": [3, 6, 2, 5],
+    "qualities": ["minor", "minor", "minor", "major"],
+    "frequency": "medium",
+    "description": "Four diatonic chords form a smooth chain that can lead into a cadence or continue to I.",
+    "theory_relationship": "Each root moves by a descending fifth (or ascending fourth), creating a connected path toward the dominant.",
+    "diagram": "degree-flow"
+  },
+  {
+    "id": "vi-ii-V-I",
+    "name": "The minor-to-tonic cadence",
+    "roman_numerals": ["vi", "ii", "V", "I"],
+    "degrees": [6, 2, 5, 1],
+    "qualities": ["minor", "minor", "major", "major"],
+    "frequency": "medium",
+    "description": "The progression starts with a relative-minor color and moves through a familiar cadence to the major tonic.",
+    "theory_relationship": "The roots vi, ii, V, and I form a descending-fifths sequence; the final V-to-I motion gives the clearest resolution.",
+    "diagram": "degree-flow"
+  },
+  {
+    "id": "I-III-vi",
+    "name": "The major-third color",
+    "roman_numerals": ["I", "III", "vi"],
+    "degrees": [1, 3, 6],
+    "qualities": ["major", "major", "minor"],
+    "frequency": "less common",
+    "description": "A major III adds a bright chromatic lift between the home chord and the relative minor.",
+    "theory_relationship": "In C major, E major is E–G#–B: G# is outside the C-major scale. That raised note gives III a distinct color before Am.",
+    "diagram": "degree-flow"
+  },
+  {
+    "id": "I-III-IV",
+    "name": "The chromatic lift to IV",
+    "roman_numerals": ["I", "III", "IV"],
+    "degrees": [1, 3, 4],
+    "qualities": ["major", "major", "major"],
+    "frequency": "less common",
+    "description": "A major III creates a chromatic lift before the progression opens onto IV.",
+    "theory_relationship": "In C major, E major contains G# instead of the scale's G natural. The raised third adds a bright, unexpected color before F major.",
+    "diagram": "degree-flow"
+  },
+  {
+    "id": "v-I-IV",
+    "name": "The minor-five return",
+    "roman_numerals": ["v", "I", "IV"],
+    "degrees": [5, 1, 4],
+    "qualities": ["minor", "major", "major"],
+    "frequency": "less common",
+    "description": "A minor v gives the dominant chord a softer, darker sound before I moves to IV.",
+    "theory_relationship": "In C major, G minor uses Bb rather than the scale's B natural. The lowered seventh softens the usual dominant pull into C.",
+    "diagram": "degree-flow"
+  },
+  {
+    "id": "I-II-IV",
+    "name": "The major-two step",
+    "roman_numerals": ["I", "II", "IV"],
+    "degrees": [1, 2, 4],
+    "qualities": ["major", "major", "major"],
+    "frequency": "less common",
+    "description": "A major II gives the step away from I a brighter, more lifted quality before IV.",
+    "theory_relationship": "In C major, D major contains F# instead of the scale's F natural. That raised fourth creates the major II color before F major.",
+    "diagram": "degree-flow"
+  }
+]
