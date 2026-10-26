@@ -1,4 +1,5 @@
 import hashlib
+from html import escape
 import math
 from pathlib import Path
 
@@ -7,6 +8,14 @@ from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 from cadence.audio_examples import generate_progression_wav
 from cadence.chord_model import DEFAULT_MODEL_PATH, ChordModelError
+from cadence.chart_data import (
+    ChartData,
+    ChartDataError,
+    ChartGroup,
+    SectionRange,
+    build_chart_data,
+)
+from cadence.chart_pdf import create_chart_pdf
 from cadence.progression_data import (
     FREQUENCY_GROUPS,
     Progression,
@@ -153,6 +162,8 @@ def _initialize_state() -> None:
         "analysis_time_signature": None,
         "analysis_sections": [],
         "analysis_layout": None,
+        "analysis_chart_preview": None,
+        "analysis_chart_signature": None,
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -204,6 +215,37 @@ def _apply_styles() -> None:
         .frequency-badge.frequent { color: #8fd3a8; }
         .frequency-badge.medium { color: #f0ce76; }
         .frequency-badge.less-common { color: #f28b82; }
+        .chart-preview {
+            border-collapse: collapse;
+            color: #f3e7cf;
+            font-size: 0.85rem;
+            width: 100%;
+        }
+        .chart-preview th, .chart-preview td {
+            border: 1px solid #74664e;
+            min-width: 5rem;
+            padding: 0.4rem;
+            text-align: center;
+            vertical-align: middle;
+        }
+        .chart-preview th {
+            background: #302c25;
+            color: #f3e7cf;
+        }
+        .chart-preview .chart-match {
+            background: #d9a85f;
+            border-radius: 0.3rem;
+            color: #211f1b;
+            display: inline-block;
+            font-weight: 700;
+            margin: 0.1rem;
+            padding: 0.1rem 0.25rem;
+        }
+        .chart-preview .chart-chord {
+            display: inline-block;
+            margin: 0.1rem;
+            padding: 0.1rem 0.25rem;
+        }
         .stButton > button {
             border-color: #bd8640;
             border-radius: 0.7rem;
@@ -565,6 +607,8 @@ def _set_analysis_result(
     )
     st.session_state.analysis_time_signature = result.metadata.time_signature
     st.session_state.analysis_layout = None
+    st.session_state.analysis_chart_preview = None
+    st.session_state.analysis_chart_signature = None
     for key in list(st.session_state.keys()):
         if key.startswith(("analysis_section_name_", "analysis_section_start_", "analysis_section_end_")):
             del st.session_state[key]
@@ -651,7 +695,193 @@ def _render_analysis_sections(total_bars: int, layout_id: str) -> None:
         st.rerun()
 
 
-def _render_song_analysis(result: SongAnalysis) -> None:
+def _chart_input_signature(result: SongAnalysis) -> str:
+    signature = (
+        st.session_state.analysis_file_hash,
+        st.session_state.analysis_title.strip(),
+        st.session_state.analysis_key,
+        float(st.session_state.analysis_tempo),
+        st.session_state.analysis_time_signature,
+        tuple(
+            (
+                section["name"],
+                int(section["start_bar"]),
+                int(section["end_bar"]),
+            )
+            for section in st.session_state.analysis_sections
+        ),
+        tuple(
+            (
+                event.start_seconds,
+                event.end_seconds,
+                event.label,
+                event.score,
+            )
+            for event in result.events
+        ),
+        result.metadata.beat_times,
+    )
+    return hashlib.sha256(repr(signature).encode("utf-8")).hexdigest()
+
+
+def _render_chart_group(
+    chart: ChartData,
+    group: ChartGroup,
+    group_index: int,
+    show_lesson_link: bool,
+) -> None:
+    if not group.bars:
+        return
+    st.markdown(f"#### {escape(group.name)}")
+    if group.match is not None and group.match.progression is not None:
+        progression = group.match.progression
+        st.success(
+            f"Possible match in {group.name}: {progression.name} in "
+            f"{group.match.key} (heuristic; review the chord estimates)."
+        )
+        if show_lesson_link and st.button(
+            f"Open {progression.name} lesson",
+            key=f"chart_match_lesson_{group_index}",
+        ):
+            st.session_state.selected_progression_id = progression.id
+            _navigate("lesson")
+    elif group.match is not None and group.match.ambiguous:
+        st.info(
+            f"Several starter patterns could fit {group.name}: "
+            f"{', '.join(group.match.candidate_names)}. No lesson link is selected."
+        )
+
+    headers = ["Bar"] + [
+        f"Beat {beat}" for beat in range(1, chart.beats_per_bar + 1)
+    ]
+    rows = []
+    for bar in group.bars:
+        cells = [f"<td><strong>{bar.number}</strong></td>"]
+        for beat_slot in range(1, chart.beats_per_bar + 1):
+            chords = [
+                chord for chord in bar.chords if int(chord.beat) == beat_slot
+            ]
+            labels = "".join(
+                (
+                    '<span class="chart-match">'
+                    if chord.highlighted and show_lesson_link
+                    else '<span class="chart-chord">'
+                )
+                + f"{chord.beat:g}: {escape(chord.label)}</span>"
+                for chord in chords
+            )
+            cells.append(f"<td>{labels}</td>")
+        rows.append("<tr>" + "".join(cells) + "</tr>")
+    header_html = "".join(f"<th>{escape(header)}</th>" for header in headers)
+    st.markdown(
+        '<table class="chart-preview"><thead><tr>'
+        + header_html
+        + "</tr></thead><tbody>"
+        + "".join(rows)
+        + "</tbody></table>",
+        unsafe_allow_html=True,
+    )
+
+
+def _render_chart_preview(result: SongAnalysis, progressions: tuple[Progression, ...]) -> None:
+    st.subheader("Section-aware chart preview")
+    current_signature = _chart_input_signature(result)
+    if st.button(
+        "Update chart preview",
+        type="primary",
+        disabled=not st.session_state.analysis_title.strip(),
+    ):
+        sections = tuple(
+            SectionRange(
+                name=section["name"],
+                start_bar=section["start_bar"],
+                end_bar=section["end_bar"],
+            )
+            for section in st.session_state.analysis_sections
+        )
+        first_beat = result.metadata.beat_times[0] if result.metadata.beat_times else 0.0
+        try:
+            chart = build_chart_data(
+                title=st.session_state.analysis_title,
+                key=st.session_state.analysis_key,
+                tempo_bpm=float(st.session_state.analysis_tempo),
+                time_signature=st.session_state.analysis_time_signature,
+                duration=result.duration,
+                events=result.events,
+                sections=sections,
+                progressions=progressions,
+                first_beat_time=first_beat,
+            )
+        except ChartDataError as exc:
+            st.error(str(exc))
+        else:
+            st.session_state.analysis_chart_preview = chart
+            st.session_state.analysis_chart_signature = current_signature
+
+    preview = st.session_state.analysis_chart_preview
+    if preview is None:
+        st.info(
+            "Review the title, metadata, and section ranges, then update the preview "
+            "to build the bar-and-beat chart."
+        )
+        return
+
+    preview_is_current = (
+        st.session_state.analysis_chart_signature == current_signature
+    )
+    if preview_is_current:
+        st.caption("Preview is up to date.")
+    else:
+        st.warning(
+            "This is the previous chart preview. Your edits are not included yet; "
+            "click **Update chart preview** before using lesson links or downloading."
+        )
+    st.markdown(f"### {escape(preview.title)}")
+    st.caption(
+        f"{escape(preview.key)} · {preview.tempo_bpm:g} BPM · "
+        f"{escape(preview.time_signature)}"
+    )
+    for group_index, group in enumerate(preview.groups):
+        _render_chart_group(
+            preview,
+            group,
+            group_index,
+            show_lesson_link=preview_is_current,
+        )
+
+    if preview_is_current:
+        try:
+            pdf_bytes = create_chart_pdf(preview)
+        except RuntimeError as exc:
+            st.error(str(exc))
+        else:
+            safe_title = "".join(
+                character
+                for character in preview.title
+                if character.isalnum() or character in " -_"
+            ).strip().replace(" ", "_")
+            st.download_button(
+                "Download performance chart PDF",
+                data=pdf_bytes,
+                file_name=f"{safe_title or 'cadence-chart'}.pdf",
+                mime="application/pdf",
+                key="chart_pdf_download",
+            )
+    else:
+        st.download_button(
+            "Download performance chart PDF",
+            data=b"",
+            file_name="cadence-chart.pdf",
+            mime="application/pdf",
+            disabled=True,
+            key="chart_pdf_download_stale",
+        )
+
+
+def _render_song_analysis(
+    result: SongAnalysis,
+    progressions: tuple[Progression, ...],
+) -> None:
     st.warning(
         "Chord, key, tempo, and time-signature values are experimental estimates. "
         "Classifier scores are heuristic, not calibrated probabilities."
@@ -749,25 +979,7 @@ def _render_song_analysis(result: SongAnalysis) -> None:
     else:
         st.info("No chord spans were produced for this recording.")
 
-    match = result.progression_match
-    if match.progression is not None:
-        st.success(
-            f"Possible databank match: {match.progression.name} in {match.key} "
-            "(heuristic; review the chord estimates)."
-        )
-        if st.button("Open the possible progression lesson"):
-            st.session_state.selected_progression_id = match.progression.id
-            _navigate("lesson")
-    elif match.ambiguous:
-        st.info(
-            "Several starter patterns could fit these chord estimates: "
-            f"{', '.join(match.candidate_names)}. No lesson link was selected."
-        )
-    else:
-        st.info(
-            "No close starter pattern matched these estimates. The chord spans "
-            "remain available without an unrelated lesson link."
-        )
+    _render_chart_preview(result, progressions)
 
 
 def _render_analysis(progressions: tuple[Progression, ...]) -> None:
@@ -797,7 +1009,7 @@ def _render_analysis(progressions: tuple[Progression, ...]) -> None:
         st.info("A different file is selected. Analyze it to replace the current estimates.")
         result = None
     if result is not None:
-        _render_song_analysis(result)
+        _render_song_analysis(result, progressions)
 
 
 def main() -> None:

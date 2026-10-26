@@ -127,8 +127,8 @@ Source: `scope.md > The Core Loop`, `What "Working" Looks Like`, `The POC Bounda
 - Complete songs and full-band recordings are allowed; instrument separation is not required.
 - Use the pre-trained model to show estimated chord labels and spans. Also estimate key, tempo, and time signature for the chart.
 - Label these estimates clearly and let the visitor correct key, tempo, and time signature before making the chart.
-- The visitor supplies the song title and can mark or edit section names such as verse, chorus, and bridge. Cadence does not automatically identify song sections in this POC.
-- A plausible progression match can link to the corresponding databank lesson. When no catalog pattern matches, keep the chord estimates visible without highlighting an unrelated entry.
+- The visitor supplies the song title and can mark or edit section names and bar ranges such as verse, chorus, and bridge. Cadence does not automatically identify song sections in this POC.
+- After the visitor updates the chart preview, compare chord patterns within each confirmed section. Highlight a unique plausible progression match in that section and let the visitor open its databank lesson. Keep unmatched or ambiguous estimates visible without highlighting an unrelated entry or forcing a lesson link.
 - An unreadable, unsupported, or failed analysis shows an actionable error, not fabricated results.
 
 **Acceptance criteria**
@@ -136,7 +136,7 @@ Source: `scope.md > The Core Loop`, `What "Working" Looks Like`, `The POC Bounda
 - [ ] The result view visibly labels chord, key, tempo, and time-signature output as estimates.
 - [ ] The visitor can correct the key, tempo, and time signature and enter a song title before export.
 - [ ] The visitor can add or edit section labels; the app does not claim to detect verse/chorus structure automatically.
-- [ ] A recognized progression links to its corresponding databank lesson; an unmatched estimate has no misleading lesson link.
+- [ ] A unique progression match within a confirmed section is highlighted and links to its corresponding databank lesson; unmatched or ambiguous estimates have no misleading lesson link.
 - [ ] An unsupported or unreadable file produces a clear error and no success-shaped result.
 - [ ] The app reminds visitors to use audio they are authorized to analyze.
 
@@ -145,6 +145,9 @@ Source: `scope.md > The Core Loop`, `What "Working" Looks Like`, `The POC Bounda
 Source: `scope.md > The Core Loop`, `What "Working" Looks Like`, `The POC Boundary`.
 
 - From the song-analysis result, the visitor can export a printable PDF chart.
+- Before export, show a bar-and-beat table preview grouped by the visitor's sections. An explicit **Update chart preview** action applies edited section ranges and recalculates bar placement and section-specific progression matches; do not present stale preview data as current.
+- Highlight the chord cells that form a unique section progression match and provide a link to that lesson. Do not highlight a weak, ambiguous, or unmatched sequence.
+- Enable PDF download from the latest successfully updated preview. If the visitor changes chart inputs after previewing, ask them to update the preview before downloading.
 - The PDF includes the user-supplied song title, key, time signature, song section labels, numbered bars, and estimated chord placements across beats. Beat positions can be shown as dots.
 - Use corrected key, tempo, and time-signature values in the chart. Include tempo with the chart metadata because it determines bar alignment.
 - Keep chord estimates visibly identified as estimates in the PDF, so the chart is not mistaken for verified sheet music.
@@ -152,6 +155,10 @@ Source: `scope.md > The Core Loop`, `What "Working" Looks Like`, `The POC Bounda
 
 **Acceptance criteria**
 - [ ] A visitor can create and open or download a PDF from an analyzed song.
+- [ ] The on-screen chart preview groups numbered bars and beat positions under the manually entered section ranges.
+- [ ] Clicking **Update chart preview** after editing metadata or sections recalculates the preview and per-section progression highlights; stale preview data is not presented as current.
+- [ ] A unique progression match is highlighted in the relevant section and opens its lesson; ambiguous/no matches remain unlinked.
+- [ ] PDF download uses the latest updated preview and is not offered while the preview is stale or invalid.
 - [ ] The printout shows title, key, time signature, tempo, song sections, bar numbers, beat markers, and chord labels in a readable layout.
 - [ ] The chart reflects user-corrected metadata and manually edited section labels.
 - [ ] The PDF clearly notes that chord content is an estimate.
@@ -163,7 +170,8 @@ Source: `scope.md > The Core Loop`, `What "Working" Looks Like`, `The POC Bounda
 - **Empty search:** Explain that no progression matched and allow search/filter changes.
 - **Uncertain analysis:** Show the experimental-estimate warning in the app and exported chart.
 - **Uncertain metadata:** Mark key, tempo, and time signature as estimates and allow correction before export.
-- **No progression match:** Keep chord estimates visible but do not highlight an unrelated databank entry.
+- **No or ambiguous section match:** Keep chord estimates visible but do not highlight or link an unrelated databank entry.
+- **Stale chart preview:** Mark the preview as out of date after chart inputs change and require **Update chart preview** before PDF download.
 - **Missing title or section labels:** Prompt the visitor to provide a title; section labels may be left blank or edited before export.
 - **Analysis or PDF error:** Explain the failure and do not display fabricated results; retain any valid on-screen analysis if only export failed.
 - **Rights and privacy:** Analyze only local audio the visitor is authorized to use. The app processes visitor audio locally and does not store or share it. The learner confirmed their original training recordings and performances may be included in the public demo/repository.
@@ -179,7 +187,7 @@ Source: `scope.md > The Core Loop`, `What "Working" Looks Like`, `The POC Bounda
 - Derive progression candidates from chord predictions rather than training a second progression model.
 - Let visitors analyze authorized local audio, including full-band recordings, while clearly labeling model outputs as experimental.
 - Estimate key, tempo, and time signature in the app and allow visitors to correct those values. Visitors supply the song title and mark or edit song sections.
-- Include a printable PDF performance chart with chord positions by bar/beat; do not build automatic song-section detection.
+- Include a section-aware bar/beat preview with an explicit update action and a printable PDF generated from the confirmed preview; do not build automatic song-section detection.
 - Use the learner's ranked starter groups: frequent (I–vi–IV–V, vi–IV–I–V, I–IV–V–I, ii–V–I), medium (the remaining diatonic examples), and less common (I–III–vi, I–III–IV, v–I–IV, I–II–IV).
 - Explain frequency groups as curated learning guidance, not a survey.
 - Start the beginner path with the major scale and diatonic chord qualities, then identify the altered note in each selected non-diatonic example.
@@ -191,7 +199,7 @@ Source: `scope.md > The Core Loop`, `What "Working" Looks Like`, `The POC Bounda
 - A small searchable/filterable databank of diatonic major-key progressions and four selected non-diatonic patterns, with lessons and synthetic audio.
 - A reproducible training run and held-out evaluation for a chord-label model trained from the learner's labeled original recordings.
 - Local analysis of visitor-provided audio using the pre-trained model, with estimated and editable key/tempo/time-signature details.
-- A bar/beat chord chart with user-provided title and section labels, exportable as a printable PDF.
+- A refreshable, section-aware bar/beat chord chart with user-provided title, corrected metadata, and section labels; highlight plausible progression matches with lesson links and export the confirmed preview as a printable PDF.
 - Optional links from plausible progression estimates to a databank lesson.
 - Clear uncertainty notices, error states, local-only visitor audio processing, and rights-respecting input boundaries.
 

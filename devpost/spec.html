@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Cadence — Technical Specification</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: system-ui, "Segoe UI", sans-serif;
+      color: #f6eee3;
+      background: #17120f;
+      --panel: #211a16;
+      --line: #594636;
+      --gold: #e6b86a;
+      --cream: #f6eee3;
+      --muted: #c7b7a5;
+      --green: #a7c9a9;
+      --red: #f1a27c;
+    }
+    * { box-sizing: border-box; }
+    body { max-width: 1060px; margin: 0 auto; padding: 2rem 1.2rem 4rem; line-height: 1.65; }
+    h1, h2, h3 { color: var(--cream); line-height: 1.25; }
+    h1 { font-size: clamp(2.2rem, 6vw, 3.5rem); margin: .25rem 0; }
+    h2 { margin-top: 0; }
+    a { color: var(--gold); }
+    code, pre { font-family: Consolas, "Cascadia Code", monospace; }
+    code { overflow-wrap: anywhere; }
+    .eyebrow { color: var(--gold); font-size: .8rem; font-weight: 750; letter-spacing: .14em; text-transform: uppercase; }
+    .lede { color: var(--muted); font-size: 1.1rem; max-width: 850px; }
+    .status { display: inline-block; border-radius: 999px; background: #423118; color: #ffdf9e; padding: .2rem .75rem; font-size: .85rem; font-weight: 700; }
+    section, details { background: var(--panel); border: 1px solid var(--line); border-radius: 1rem; margin: 1rem 0; padding: 1.2rem; }
+    details { padding: 0; overflow: hidden; }
+    summary { cursor: pointer; font-weight: 750; padding: 1rem 1.2rem; }
+    details[open] summary { border-bottom: 1px solid var(--line); color: var(--gold); }
+    .detail-body { padding: 1rem 1.2rem 1.2rem; }
+    .diagram { background: #f7f0e5; border-radius: .8rem; margin: 1rem 0; padding: .5rem; }
+    .diagram svg { display: block; max-width: 100%; height: auto; }
+    .callout { border-left: 4px solid var(--gold); background: #30251a; padding: .8rem 1rem; }
+    .warning { border-left-color: var(--red); background: #30201a; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+    .grid section { margin: 0; }
+    li { margin: .4rem 0; }
+    pre { background: #100d0b; border: 1px solid var(--line); border-radius: .6rem; overflow-x: auto; padding: .9rem; }
+    .muted { color: var(--muted); }
+    footer { border-top: 1px solid var(--line); color: var(--muted); margin-top: 2rem; padding-top: 1rem; }
+    @media (max-width: 680px) { body { padding: 1.2rem .8rem 3rem; } .grid { grid-template-columns: 1fr; } section { padding: 1rem; } }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="status">Approved for build</span>
+    <p class="eyebrow">Build With AI · Technical blueprint</p>
+    <h1>Cadence</h1>
+    <p class="lede">A local Python app for learning progressions, training and testing a small chord model, and exporting printable song charts.</p>
+  </header>
+
+  <main>
+    <section aria-labelledby="plain">
+      <h2 id="plain">How this works, in plain language</h2>
+      <p>Your five original songs and chord labels teach a small classifier to connect audio pitch patterns with chord names. A command-line training run uses four songs to train, compares the new model with the old template analyzer on a fifth song, then saves the trained model. Visitors do not train; the local app loads that saved model.</p>
+      <p>The app analyzes a visitor's local audio, shows chord and musical-detail estimates, lets them correct the chart information and mark song sections, and creates a downloadable PDF. It also has the searchable progression library and theory lessons. The app never sends visitor audio to a remote service.</p>
+      <p class="callout warning">Five songs make a useful experiment, not a guarantee of accuracy on unfamiliar music. The held-out comparison may show that the trained model does not improve on the old analyzer.</p>
+    </section>
+
+    <section aria-labelledby="flow">
+      <h2 id="flow">How the pieces connect</h2>
+      <div class="diagram">
+        <svg viewBox="0 0 1000 375" role="img" aria-labelledby="flow-title flow-desc" width="100%">
+          <title id="flow-title">Cadence model training and visitor data flow</title>
+          <desc id="flow-desc">Five labeled songs become chroma features for a classifier. The classifier is compared with the existing baseline on a held-out song and saved. A local Streamlit app loads it for a visitor's audio, creates estimates and an editable bar chart, and produces a PDF or optional progression lesson link.</desc>
+          <defs>
+            <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+              <path d="M0,0 L8,4 L0,8 Z" fill="#584733"></path>
+            </marker>
+          </defs>
+          <g fill="#fffaf1" stroke="#9a7136" stroke-width="2">
+            <rect x="18" y="42" width="170" height="80" rx="12"></rect>
+            <rect x="215" y="42" width="170" height="80" rx="12"></rect>
+            <rect x="412" y="42" width="170" height="80" rx="12"></rect>
+            <rect x="609" y="42" width="170" height="80" rx="12"></rect>
+            <rect x="806" y="42" width="176" height="80" rx="12"></rect>
+          </g>
+          <g fill="#fff3e7" stroke="#b66a3c" stroke-width="2">
+            <rect x="18" y="238" width="170" height="82" rx="12"></rect>
+            <rect x="215" y="238" width="170" height="82" rx="12"></rect>
+            <rect x="412" y="238" width="170" height="82" rx="12"></rect>
+            <rect x="609" y="238" width="170" height="82" rx="12"></rect>
+            <rect x="806" y="238" width="176" height="82" rx="12"></rect>
+          </g>
+          <g fill="#241b14" font-family="system-ui, sans-serif" font-size="14" font-weight="600" text-anchor="middle">
+            <text x="103" y="72"><tspan x="103">Labeled original</tspan><tspan x="103" dy="20">songs + intervals</tspan></text>
+            <text x="300" y="72"><tspan x="300">12-pitch</tspan><tspan x="300" dy="20">audio features</tspan></text>
+            <text x="497" y="72"><tspan x="497">Train on four</tspan><tspan x="497" dy="20">songs</tspan></text>
+            <text x="694" y="72"><tspan x="694">Compare on</tspan><tspan x="694" dy="20">held-out song</tspan></text>
+            <text x="894" y="72"><tspan x="894">Save model for</tspan><tspan x="894" dy="20">the local app</tspan></text>
+            <text x="103" y="268"><tspan x="103">Streamlit app</tspan><tspan x="103" dy="20">loads saved model</tspan></text>
+            <text x="300" y="268"><tspan x="300">Visitor selects</tspan><tspan x="300" dy="20">local song</tspan></text>
+            <text x="497" y="268"><tspan x="497">Chord + key/tempo/</tspan><tspan x="497" dy="20">meter estimates</tspan></text>
+            <text x="694" y="268"><tspan x="694">Correct details,</tspan><tspan x="694" dy="20">mark sections</tspan></text>
+            <text x="894" y="268"><tspan x="894">PDF chart /</tspan><tspan x="894" dy="20">lesson candidate</tspan></text>
+          </g>
+          <g fill="none" stroke="#584733" stroke-width="2" marker-end="url(#arrow)">
+            <path d="M188 82 H207"></path>
+            <path d="M385 82 H404"></path>
+            <path d="M582 82 H601"></path>
+            <path d="M779 82 H798"></path>
+            <path d="M894 122 V190 H103 V230"></path>
+            <path d="M188 279 H207"></path>
+            <path d="M385 279 H404"></path>
+            <path d="M582 279 H601"></path>
+            <path d="M779 279 H798"></path>
+          </g>
+          <text x="500" y="356" fill="#5b4935" font-family="system-ui, sans-serif" font-size="13" text-anchor="middle">Separate library path: beginner primer → curated progressions → theory lesson + synthetic audio</text>
+        </svg>
+      </div>
+      <p class="muted">PRD refs: <code>prd.md &gt; The Core Journey</code>; <code>prd.md &gt; Training and evaluating the chord model</code>; <code>prd.md &gt; Analyzing a local song</code>; <code>prd.md &gt; Exporting a performance chart</code>.</p>
+    </section>
+
+    <section aria-labelledby="components">
+      <h2 id="components">Components and their jobs</h2>
+      <details open>
+        <summary>Learning library — `app.py`, `data/progressions.json`, `theory.py`, `audio_examples.py`</summary>
+        <div class="detail-body">
+          <p>Streamlit shows the experience choice, optional major-scale tutorial, searchable/filterable progression cards, theory lessons, and original synthetic WAV examples.</p>
+          <p class="muted">Implements `prd.md > Experience choice and beginner tutorial`, `Searching and browsing the progression databank`, and `Understanding and hearing a progression`.</p>
+        </div>
+      </details>
+      <details>
+        <summary>Training run — `training.py`, `audio_features.py`, `annotations.csv`, `split.json`</summary>
+        <div class="detail-body">
+          <p>A timed annotation row pairs a song and audio interval with a chord label. The training command turns each interval into pitch-summary examples, fits a small classifier on four complete songs, tests both methods against a held-out fifth song on the same labeled audio frames, reports accuracy and macro-F1, and saves the trained model.</p>
+          <p>The label set is 24 major/minor triads, no-chord, Daug, and Eaug. Seventh/sixth chords are simplified to same-root major/minor triads, and slash-chord bass inversions are ignored. Daug and Eaug appear only in Demo 5, which stays in training, so their cross-song performance cannot be evaluated on the held-out song. Other qualities remain outside this experiment.</p>
+          <p>The existing <code>/models/</code> ignore rule stays in place; only the approved public classifier artifact is allow-listed.</p>
+          <p class="muted">Implements `prd.md > Training and evaluating the chord model`.</p>
+        </div>
+      </details>
+      <details>
+        <summary>Local song analysis — `chord_model.py`, `song_metadata.py`, `matching.py`</summary>
+        <div class="detail-body">
+          <p>The app loads the saved model, predicts chord labels from visitor audio, estimates key and tempo, and suggests a common time signature. Metadata and chord results are estimates; visitors can correct key, tempo, and meter. Song sections are manually marked by bar range.</p>
+          <p>Audio stays local. A plausible progression can link to a library lesson; weak or unmatched results do not force a link.</p>
+          <p class="muted">Implements `prd.md > Analyzing a local song`.</p>
+        </div>
+      </details>
+      <details>
+        <summary>Printable chart — `chart_pdf.py`</summary>
+        <div class="detail-body">
+          <p>ReportLab creates the PDF in memory. It includes title, corrected key/tempo/time signature, user-marked sections, numbered bars, beat dots, chord labels, and an estimate disclaimer. Streamlit provides the download.</p>
+          <p class="muted">Implements `prd.md > Exporting a performance chart`.</p>
+        </div>
+      </details>
+      <details>
+        <summary>Tests — `tests/`</summary>
+        <div class="detail-body">
+          <p>Use synthetic features/audio and small test annotation tables to verify parsing, song-level splits, training, baseline comparison, metadata uncertainty, chart layout, pattern matching, and existing behavior. Do not make automated tests depend on the learner's recordings.</p>
+          <p class="muted">Covers acceptance criteria across `prd.md > Features and Behavior`.</p>
+        </div>
+      </details>
+    </section>
+
+    <section aria-labelledby="stack">
+      <h2 id="stack">Tools and where they run</h2>
+      <ul>
+        <li><strong>Python 3.12 + Streamlit:</strong> local browser app; <a href="https://docs.streamlit.io/">Streamlit docs</a>.</li>
+        <li><strong>librosa:</strong> audio features, beat/tempo estimate; <a href="https://librosa.org/doc/latest/index.html">librosa docs</a>.</li>
+        <li><strong>scikit-learn:</strong> small supervised classifier; <a href="https://scikit-learn.org/stable/">scikit-learn docs</a>.</li>
+        <li><strong>joblib:</strong> save and load the local model; <a href="https://joblib.readthedocs.io/en/stable/">joblib docs</a>.</li>
+        <li><strong>ReportLab:</strong> downloadable PDF generation; <a href="https://docs.reportlab.com/">ReportLab docs</a>.</li>
+        <li><strong>NumPy/SciPy:</strong> local numeric and signal helpers; <a href="https://numpy.org/doc/stable/">NumPy</a> · <a href="https://docs.scipy.org/doc/">SciPy</a>.</li>
+        <li>No API keys, hosted model, cloud service, or remote audio path.</li>
+      </ul>
+      <p>Install/update from the project root:</p>
+      <pre><code>.venv\Scripts\python.exe -m pip install -e .</code></pre>
+      <p>Run training and evaluation first, then start the app:</p>
+      <pre><code>.venv\Scripts\python.exe -m cadence.training
+.venv\Scripts\python.exe -m streamlit run app.py</code></pre>
+      <p>Open the browser tab Streamlit starts or visit <code>http://localhost:8501</code>. The training command prints the held-out comparison and saves <code>models\chord_classifier.joblib</code>.</p>
+    </section>
+
+    <div class="grid">
+      <section aria-labelledby="simplify">
+        <h2 id="simplify">What stays small</h2>
+        <ul>
+          <li>One local app, no separate API or hosted service.</li>
+          <li>Five original songs, one song held out; no general-accuracy claim.</li>
+          <li>24 major/minor chord labels, Daug/Eaug, and no-chord; augmented labels are represented by one song.</li>
+          <li>Manual timed label table and section boundaries; no PDF-reading or structure-detection model.</li>
+          <li>Heuristic metadata suggestions with user correction.</li>
+        </ul>
+      </section>
+      <section aria-labelledby="failures">
+        <h2 id="failures">If something goes wrong</h2>
+        <ul>
+          <li>Bad labels/audio stop training with a specific row/file error.</li>
+          <li>Missing model tells the owner to run the training command.</li>
+          <li>Unsupported audio or uncertain meter prompts a clear correction or retry.</li>
+          <li>PDF failure leaves valid on-screen analysis intact.</li>
+          <li>No match means no unrelated lesson link.</li>
+        </ul>
+      </section>
+    </div>
+
+    <section aria-labelledby="files">
+      <h2 id="files">Planned project files</h2>
+      <pre><code>Build With AI/
+├── app.py
+├── pyproject.toml
+      ├── .gitignore                       # Allow-list only the public classifier artifact
+      ├── data/
+│   ├── progressions.json
+│   └── training/
+│       ├── annotations.csv
+│       ├── split.json
+│       └── audio/                  # Five approved original tracks
+├── models/
+│   └── chord_classifier.joblib
+├── src/cadence/
+│   ├── audio_features.py
+│   ├── audio_examples.py
+│   ├── chart_pdf.py
+│   ├── chord_model.py
+│   ├── chords.py                   # Existing template baseline
+│   ├── matching.py
+│   ├── song_metadata.py
+│   ├── theory.py
+│   └── training.py
+├── tests/
+└── devpost/</code></pre>
+      <p class="muted">The existing private CLI, lyric transcription, and comparison code remain separate and are not used by the databank app.</p>
+    </section>
+  </main>
+
+  <footer>
+    <p>The public repository includes only the learner-approved original training tracks and annotations. Visitor uploads are temporary and never committed or shared.</p>
+    <p><a href="spec.md">Read the canonical Markdown technical spec</a></p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Cadence — Product Requirements</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: system-ui, "Segoe UI", sans-serif;
+      color: #f5eee3;
+      background: #17120f;
+      --panel: #211a16;
+      --line: #554336;
+      --gold: #e6b86a;
+      --cream: #f5eee3;
+      --muted: #c7b7a5;
+      --green: #9fc5a6;
+    }
+    * { box-sizing: border-box; }
+    body {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 2rem 1.2rem 4rem;
+      line-height: 1.65;
+    }
+    h1, h2, h3 { color: var(--cream); line-height: 1.25; }
+    h1 { font-size: clamp(2.2rem, 6vw, 3.5rem); margin: .25rem 0; }
+    h2 { margin-top: 0; }
+    a { color: var(--gold); }
+    .eyebrow { color: var(--gold); font-size: .8rem; font-weight: 750; letter-spacing: .14em; text-transform: uppercase; }
+    .lede { color: var(--muted); font-size: 1.12rem; max-width: 780px; }
+    .status { display: inline-block; border-radius: 999px; background: #423118; color: #ffdf9e; padding: .2rem .75rem; font-size: .85rem; font-weight: 700; }
+    section, details { background: var(--panel); border: 1px solid var(--line); border-radius: 1rem; margin: 1rem 0; padding: 1.25rem; }
+    details { padding: 0; overflow: hidden; }
+    summary { cursor: pointer; font-weight: 750; padding: 1rem 1.25rem; }
+    details[open] summary { border-bottom: 1px solid var(--line); color: var(--gold); }
+    .detail-body { padding: 1rem 1.25rem 1.25rem; }
+    .diagram { background: #f7f2e9; border-radius: .75rem; margin: 1rem 0; padding: .5rem; }
+    .diagram svg { display: block; height: auto; max-width: 100%; }
+    .callout { border-left: 4px solid var(--gold); background: #30251a; padding: .8rem 1rem; }
+    .warning { border-left-color: #efa36b; background: #30201a; }
+    .criteria { list-style: none; padding-left: 0; }
+    .criteria li::before { content: "□ "; color: var(--gold); font-weight: 700; }
+    .muted { color: var(--muted); }
+    .columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+    .columns section { margin: 0; }
+    li { margin: .4rem 0; }
+    footer { border-top: 1px solid var(--line); color: var(--muted); margin-top: 2rem; padding-top: 1rem; }
+    @media (max-width: 680px) {
+      body { padding: 1.2rem .8rem 3rem; }
+      .columns { grid-template-columns: 1fr; }
+      section { padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="status">Approved</span>
+    <p class="eyebrow">Build With AI · Product requirements</p>
+    <h1>Cadence</h1>
+    <p class="lede">Resolve Every Song. An educational progression databank connected to an experimental chord model and printable performance charts.</p>
+  </header>
+
+  <main>
+    <section aria-labelledby="journey">
+      <h2 id="journey">Two connected journeys</h2>
+      <p>The model is trained before public use. Visitors load a local song into the pre-trained model, review uncertain results, and can print a chord chart.</p>
+      <div class="diagram">
+        <svg viewBox="0 0 960 390" role="img" aria-labelledby="journey-title journey-desc" width="100%">
+          <title id="journey-title">Cadence training and visitor journeys</title>
+          <desc id="journey-desc">The project owner trains a chord model on labeled original recordings and compares it with the existing analyzer on held-out music. Visitors use that pre-trained model with local audio, edit musical metadata and sections, export a printable chord chart, or open a matching progression lesson.</desc>
+          <defs>
+            <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+              <path d="M0,0 L8,4 L0,8 Z" fill="#584733"></path>
+            </marker>
+          </defs>
+          <g fill="#fffaf1" stroke="#9a7136" stroke-width="2">
+            <rect x="20" y="44" width="190" height="76" rx="12"></rect>
+            <rect x="260" y="44" width="190" height="76" rx="12"></rect>
+            <rect x="500" y="44" width="190" height="76" rx="12"></rect>
+            <rect x="740" y="44" width="200" height="76" rx="12"></rect>
+          </g>
+          <g fill="#fff3e7" stroke="#b66a3c" stroke-width="2">
+            <rect x="20" y="234" width="170" height="82" rx="12"></rect>
+            <rect x="220" y="234" width="170" height="82" rx="12"></rect>
+            <rect x="420" y="234" width="170" height="82" rx="12"></rect>
+            <rect x="620" y="234" width="150" height="82" rx="12"></rect>
+            <rect x="800" y="234" width="140" height="82" rx="12"></rect>
+          </g>
+          <g fill="#241b14" font-family="system-ui, sans-serif" font-size="14" font-weight="600" text-anchor="middle">
+            <text x="115" y="72"><tspan x="115">Labeled original</tspan><tspan x="115" dy="20">recordings</tspan></text>
+            <text x="355" y="72"><tspan x="355">Train chord</tspan><tspan x="355" dy="20">labels</tspan></text>
+            <text x="595" y="72"><tspan x="595">Compare models on</tspan><tspan x="595" dy="20">held-out song</tspan></text>
+            <text x="840" y="72"><tspan x="840">Pre-trained model</tspan><tspan x="840" dy="20">included with app</tspan></text>
+            <text x="105" y="264"><tspan x="105">Visitor selects</tspan><tspan x="105" dy="20">local audio</tspan></text>
+            <text x="305" y="264"><tspan x="305">Estimate chords,</tspan><tspan x="305" dy="20">key, tempo, meter</tspan></text>
+            <text x="505" y="264"><tspan x="505">Edit details +</tspan><tspan x="505" dy="20">mark sections</tspan></text>
+            <text x="695" y="264"><tspan x="695">Preview +</tspan><tspan x="695" dy="20">export PDF</tspan></text>
+            <text x="870" y="264"><tspan x="870">Open a related</tspan><tspan x="870" dy="20">lesson if matched</tspan></text>
+          </g>
+          <g fill="none" stroke="#584733" stroke-width="2" marker-end="url(#arrow)">
+            <path d="M210 82 H252"></path>
+            <path d="M450 82 H492"></path>
+            <path d="M690 82 H732"></path>
+            <path d="M840 120 V188 H105 V226"></path>
+            <path d="M190 275 H212"></path>
+            <path d="M390 275 H412"></path>
+            <path d="M590 275 H612"></path>
+            <path d="M770 275 H792"></path>
+          </g>
+          <text x="480" y="367" fill="#5b4935" font-family="system-ui, sans-serif" font-size="13" text-anchor="middle">Separate learning path: optional primer → progression library → listen, explore theory, and hear synthetic examples</text>
+        </svg>
+      </div>
+      <p class="callout warning">Chord, key, tempo, and time-signature results are estimates. A printable chart is a performance reference, not verified sheet music.</p>
+    </section>
+
+    <section aria-labelledby="journey-steps">
+      <h2 id="journey-steps">Visitor journey, step by step</h2>
+      <details open>
+        <summary>1. Choose experience and learn the basics</summary>
+        <div class="detail-body">
+          <p>Ask whether the visitor is new to music. Beginners can take or skip a short major-scale lesson covering I, ii, iii, IV, V, vi, and vii°.</p>
+          <ul class="criteria">
+            <li>A new visitor can choose a level and reach the tutorial or skip it.</li>
+            <li>Skipping the tutorial still leads to both the progression library and song analysis.</li>
+            <li>The lesson distinguishes major, minor, and diminished chord symbols.</li>
+          </ul>
+        </div>
+      </details>
+      <details>
+        <summary>2. Search and explore the progression databank</summary>
+        <div class="detail-body">
+          <p>Search by progression name or Roman numerals and filter by curated frequency group. Cards show the name, pattern, and frequency label.</p>
+          <p><strong>Frequent:</strong> I–vi–IV–V, vi–IV–I–V, I–IV–V–I, ii–V–I. <strong>Medium:</strong> I–V–vi–IV, I–vi–ii–V. The remaining starter patterns are less common and diatonic.</p>
+          <p class="muted">Frequency labels are chosen as learning guidance, not measured global statistics. The beginner collection excludes out-of-scale II, III, and v.</p>
+          <ul class="criteria">
+            <li>Name or Roman-numeral search finds a matching pattern.</li>
+            <li>A selected group filters the cards; clearing it restores all entries.</li>
+            <li>No results show a clear empty state instead of a blank grid.</li>
+          </ul>
+        </div>
+      </details>
+      <details>
+        <summary>3. Open a progression lesson</summary>
+        <div class="detail-body">
+          <p>Each lesson explains a meaningful theory relationship, shows a useful diagram, gives chord spellings across keys, and plays an original synthetic example. The written lesson remains available if playback fails.</p>
+          <ul class="criteria">
+            <li>Visitors can return to the library without losing the search context.</li>
+            <li>Each starter lesson has playable audio and an explanation beyond repeating its chord symbols.</li>
+          </ul>
+        </div>
+      </details>
+      <details>
+        <summary>4. Train once, then use the pre-trained model</summary>
+        <div class="detail-body">
+          <p>The project owner trains the model with original recordings paired with chord labels. Seventh/sixth extensions are simplified to same-root major/minor triads, slash-chord bass inversions are ignored, and Daug/Eaug remain distinct augmented-triad labels. Because these labels appear only in Demo 5, that song stays in training and the demo reports that augmented-chord performance has no independent held-out evaluation. A separate song is held out for the overall comparison of the trained model and the existing chord-template analyzer.</p>
+          <p>Visitors use the resulting pre-trained model and are never required to train it.</p>
+          <ul class="criteria">
+            <li>Training completes from the prepared labeled examples and produces a model the app can use.</li>
+            <li>The demo compares both methods on held-out music, or states honestly if the data is too small for a meaningful comparison.</li>
+            <li>Training results do not imply guaranteed performance on unfamiliar songs.</li>
+          </ul>
+        </div>
+      </details>
+      <details>
+        <summary>5. Analyze a local song</summary>
+        <div class="detail-body">
+          <p>The visitor selects an authorized local audio file. Full-band recordings are allowed. Cadence displays estimated chord spans, key, tempo, and time signature, and lets the visitor correct the latter three before making a chart.</p>
+          <p>The visitor enters the song title and marks or edits sections such as verse, chorus, or bridge. Cadence does not automatically detect song structure in this version. A plausible catalog match can open its lesson; a weak or unmatched result stays unlinked.</p>
+          <ul class="criteria">
+            <li>Analysis is local and does not accept a streaming URL.</li>
+            <li>Chord and metadata estimates have a clear uncertainty label and can be corrected where specified.</li>
+            <li>Unmatched or ambiguous chords do not point to an unrelated lesson.</li>
+            <li>Unsupported or unreadable audio shows an actionable error without fabricated results.</li>
+          </ul>
+        </div>
+      </details>
+      <details>
+        <summary>6. Export a printable performance chart</summary>
+        <div class="detail-body">
+          <p>The visitor previews and exports a PDF with song title, key, time signature, tempo, section labels, numbered bars, chord placements, and beat dots. It uses corrected metadata and clearly labels the chord content as estimated. Longer songs can span multiple readable pages.</p>
+          <ul class="criteria">
+            <li>The PDF opens or downloads and remains readable when printed.</li>
+            <li>It reflects the title, sections, and corrected musical metadata.</li>
+            <li>If export fails, explain the error and keep the on-screen analysis available.</li>
+          </ul>
+        </div>
+      </details>
+    </section>
+
+    <div class="columns">
+      <section aria-labelledby="states">
+        <h2 id="states">Important states</h2>
+        <ul>
+          <li><strong>Empty search:</strong> explain no pattern matched and let the visitor adjust.</li>
+          <li><strong>Uncertain estimates:</strong> keep warnings visible in the app and PDF.</li>
+          <li><strong>No progression match:</strong> show chord estimates without a misleading link.</li>
+          <li><strong>Analysis failure:</strong> explain the problem and show no invented output.</li>
+          <li><strong>PDF failure:</strong> preserve on-screen results and explain how export failed.</li>
+          <li><strong>Rights/privacy:</strong> visitor audio is locally processed and not stored or shared.</li>
+        </ul>
+      </section>
+      <section aria-labelledby="boundary">
+        <h2 id="boundary">What stays out</h2>
+        <ul>
+          <li>Automatic section detection and automatic chart-PDF reading.</li>
+          <li>Instrument separation, lyrics, tabs, formal notation, or arbitrary-song accuracy claims.</li>
+          <li>Streaming links, hosted analysis, accounts, saved history, and deployment.</li>
+          <li>Objective internet-wide frequency rankings.</li>
+        </ul>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <p>Scope said “learn progressions and try experimental analysis.” This PRD now defines training, local inference, editable musical details, and the performance PDF.</p>
+    <p><a href="prd.md">Read the canonical Markdown requirements</a></p>
+  </footer>
+</body>
+</html>

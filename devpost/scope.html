@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Cadence — Scope</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, "Segoe UI", sans-serif;
+      color: #182230;
+      background: #f6f8fb;
+    }
+    body {
+      box-sizing: border-box;
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+      line-height: 1.6;
+    }
+    h1, h2 { color: #101828; line-height: 1.25; }
+    h1 { margin-bottom: .2rem; }
+    .tagline, .muted { color: #475467; }
+    .status {
+      display: inline-block;
+      border-radius: 999px;
+      background: #fef0c7;
+      color: #7a2e0e;
+      padding: .2rem .7rem;
+      font-size: .9rem;
+      font-weight: 700;
+    }
+    .callout {
+      border-left: 4px solid #175cd3;
+      background: #eff8ff;
+      padding: .8rem 1rem;
+    }
+    .diagram {
+      border: 1px solid #d0d5dd;
+      border-radius: .8rem;
+      background: #fff;
+      margin: 1.25rem 0;
+      padding: .75rem;
+    }
+    details {
+      border: 1px solid #d0d5dd;
+      border-radius: .65rem;
+      background: #fff;
+      margin: .7rem 0;
+      padding: .7rem 1rem;
+    }
+    summary { cursor: pointer; font-weight: 700; }
+    li { margin: .4rem 0; }
+    footer {
+      border-top: 1px solid #d0d5dd;
+      margin-top: 2rem;
+      padding-top: 1rem;
+    }
+    @media (max-width: 600px) {
+      body { padding: 1.2rem .8rem 2rem; }
+      .diagram { padding: .25rem; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="status">Approved scope</span>
+    <h1>Cadence</h1>
+    <p class="tagline">Resolve Every Song.</p>
+    <p>An educational chord-progression databank paired with a small local experiment that learns chord labels from annotated original recordings and estimates chords in new local songs.</p>
+  </header>
+
+  <main>
+    <section aria-labelledby="kernel">
+      <h2 id="kernel">The distinctive idea</h2>
+      <p>Cadence helps musicians understand why familiar progressions work, then connects that learning library to a transparent experiment: train a model to predict chord labels from the team's own annotated recordings, use it to estimate chords in new local songs, and derive likely progression patterns from those predictions. Visitors can correct musical metadata, mark song sections, and export a printable bar-and-beat chord chart. It demonstrates what the model learns on held-out music without claiming reliable transcription of arbitrary songs.</p>
+      <div class="diagram">
+        <svg viewBox="0 0 900 390" role="img" aria-labelledby="flow-title flow-desc" width="100%" height="390">
+          <title id="flow-title">Cadence learning and training journey</title>
+          <desc id="flow-desc">A learner explores a chord progression lesson, annotates original recordings, trains a chord-label predictor, checks predictions on held-out music, analyzes a new local song, and connects a likely progression to a lesson.</desc>
+          <defs>
+            <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+              <path d="M0,0 L8,4 L0,8 Z" fill="#475467"></path>
+            </marker>
+          </defs>
+          <g fill="#eff8ff" stroke="#1570ef" stroke-width="2">
+            <rect x="24" y="42" width="190" height="90" rx="12"></rect>
+            <rect x="260" y="42" width="190" height="90" rx="12"></rect>
+            <rect x="496" y="42" width="175" height="90" rx="12"></rect>
+            <rect x="718" y="42" width="158" height="90" rx="12"></rect>
+          </g>
+          <g fill="#fef6ee" stroke="#f79009" stroke-width="2">
+            <rect x="260" y="230" width="190" height="90" rx="12"></rect>
+            <rect x="496" y="230" width="175" height="90" rx="12"></rect>
+            <rect x="718" y="230" width="158" height="90" rx="12"></rect>
+          </g>
+          <g fill="#182230" font-family="system-ui, sans-serif" font-size="15" text-anchor="middle">
+            <text x="119" y="73"><tspan x="119">Choose experience</tspan><tspan x="119" dy="22">optional scale primer</tspan></text>
+            <text x="355" y="73"><tspan x="355">Explore databank</tspan><tspan x="355" dy="22">listen + learn</tspan></text>
+            <text x="583" y="73"><tspan x="583">Understand</tspan><tspan x="583" dy="22">theory + pattern</tspan></text>
+            <text x="797" y="73"><tspan x="797">Open matching</tspan><tspan x="797" dy="22">lesson candidate</tspan></text>
+            <text x="355" y="262"><tspan x="355">Annotate original</tspan><tspan x="355" dy="22">recordings by bar/time</tspan></text>
+            <text x="583" y="262"><tspan x="583">Train chord labels</tspan><tspan x="583" dy="22">locally</tspan></text>
+            <text x="797" y="262"><tspan x="797">Test held-out + new</tspan><tspan x="797" dy="22">local songs; show limits</tspan></text>
+          </g>
+          <g fill="none" stroke="#475467" stroke-width="2" marker-end="url(#arrow)">
+            <path d="M214 87 H252"></path>
+            <path d="M450 87 H488"></path>
+            <path d="M671 87 H710"></path>
+            <path d="M355 132 V222"></path>
+            <path d="M450 275 H488"></path>
+            <path d="M671 275 H710"></path>
+            <path d="M797 230 V145"></path>
+          </g>
+        </svg>
+      </div>
+      <p class="muted">The databank remains the educational core. The trained model predicts individual chord labels in new local audio; a clear follow-up step derives progression candidates. A held-out song checks performance without suggesting broad generalization.</p>
+    </section>
+
+    <section aria-labelledby="audience">
+      <h2 id="audience">Who it is for</h2>
+      <p>Musicians who want to understand the patterns behind chord progressions, especially beginners who have played from chord sheets without knowing why the chords work, and curious musicians who want to see how a small chord-learning model is trained and evaluated.</p>
+    </section>
+
+    <section aria-labelledby="success">
+      <h2 id="success">What proves it works</h2>
+      <p>A newcomer learns a major-scale chord quality, finds and hears a familiar progression, and understands why its chord movement works. The demo then shows the model trained on annotated original recordings, estimates chords in a new local song, and turns those labels into an uncertain progression candidate that can open a related lesson. The visitor can correct estimated key, tempo, and time signature, add a title and section labels, and print a chord chart. The team also evaluates predictions on music kept out of training. The experiment succeeds by showing training and honest evaluation, not by promising high accuracy.</p>
+      <p class="callout">The learner confirmed that the original recordings and performances are theirs and may be shared publicly. The demo and repository can use those authorized original assets and their annotations.</p>
+    </section>
+
+    <section aria-labelledby="boundary">
+      <h2 id="boundary">The proof-of-concept boundary</h2>
+      <details open>
+        <summary>Now — keep the databank and add a small training experiment</summary>
+        <ul>
+          <li>A small searchable and filterable databank of diatonic major-key progressions and beginner tutorial.</li>
+          <li>Each lesson includes chord symbols, curated frequency guidance, a theory explanation, and original synthetic audio.</li>
+          <li>Train a local chord-label predictor from the learner's original recordings annotated by chord and approximate bar or time boundaries.</li>
+          <li>Let visitors provide authorized local audio for experimental chord estimates from the trained model.</li>
+          <li>Derive progression candidates from predicted chord labels; do not train a separate progression model.</li>
+          <li>Let visitors correct estimated musical details, enter a title, mark or edit section names, and export a printable chord chart by bar and beat.</li>
+          <li>Evaluate on a song held out from training when the dataset supports it; report limitations plainly if it does not.</li>
+          <li>Full-band recordings are allowed; instrument separation is not required.</li>
+          <li>Visitors supply song sections; automatic verse/chorus detection is not included.</li>
+        </ul>
+      </details>
+      <details>
+        <summary>Later — expand only after measuring the first experiment</summary>
+        <ul>
+          <li>Add more annotated songs, styles, keys, chord qualities, and evaluation data.</li>
+          <li>Improve model performance only after reviewing measured errors.</li>
+          <li>Consider broader song analysis, instrument separation, deployment, accounts, or saved collections.</li>
+          <li>Build frequency claims from a defined, representative, properly licensed song collection.</li>
+        </ul>
+      </details>
+      <details>
+        <summary>Cut — not part of this proof of concept</summary>
+        <ul>
+          <li>Claims of reliable recognition on arbitrary songs or a complete music transcription suite.</li>
+          <li>A separately trained progression model; progression candidates come from chord predictions.</li>
+          <li>Streaming links, platform downloads, hosted inference, and remote audio processing.</li>
+          <li>Non-diatonic II, III, and v in the beginner starter library, and objectively ranked internet-wide frequency claims.</li>
+        </ul>
+      </details>
+    </section>
+
+    <section aria-labelledby="loop">
+      <h2 id="loop">The core loop</h2>
+      <ol>
+        <li>Choose a music-experience level and optionally take a short major-scale tutorial.</li>
+        <li>Search or browse a progression, listen to it, and study its theory connection.</li>
+        <li>For the experiment, annotate chord changes in original audio by bar or approximate time.</li>
+        <li>Train chord labels, test the model on held-out music, and let visitors try it on authorized local songs with clearly experimental results.</li>
+      </ol>
+    </section>
+  </main>
+
+  <footer class="muted">
+    <p>Scope is a broad product sketch. The product requirements and technical blueprint will define the exact behaviors and implementation after this direction is approved.</p>
+    <p><a href="scope.md">Read the canonical Markdown scope</a></p>
+  </footer>
+</body>
+</html>

@@ -32,6 +32,23 @@ class ProgressionMatchingTests(unittest.TestCase):
         self.assertIs(match.progression, self.target)
         self.assertEqual(match.key, "D")
         self.assertFalse(match.ambiguous)
+        self.assertEqual(match.matched_event_indices, (1, 2, 3, 4, 5))
+
+    def test_match_positions_include_repeated_chord_events(self) -> None:
+        chords = spell_progression(
+            self.target.degrees,
+            "C",
+            self.target.qualities,
+        )
+        labels = [chord.symbol for chord in chords]
+
+        match = match_progression(
+            [labels[0], labels[0], *labels[1:]],
+            self.progressions,
+        )
+
+        self.assertIs(match.progression, self.target)
+        self.assertEqual(match.matched_event_indices, (0, 1, 2, 3, 4))
 
     def test_does_not_link_when_multiple_patterns_fit(self) -> None:
         duplicate = replace(
