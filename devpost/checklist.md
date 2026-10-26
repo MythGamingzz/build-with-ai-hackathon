@@ -53,27 +53,27 @@ Build mode: fast
 
 - [x] Early usable behavior explored — after Slice 2, try the step-by-step tutorial, search/filter, lesson diagrams, all-key chord spellings, and quieter/spaced synthetic audio; report what is clear or confusing while the analysis and chart work can still benefit from feedback.
 - [x] Core journey explored — after Slice 3, run the trained-model analysis flow, correct estimates, add sections, and report any confusing parts before PDF export is finalized.
-- [ ] Final kick-the-tires exploration and feedback completed — after Slice 4, explore the complete demo, try an awkward search and an uncertain/no-match result, export a chart, and report anything broken or worth changing.
+- [x] Final kick-the-tires exploration and feedback completed — the learner reports the updated demo looks good and the PDF is okay; no additional changes were requested.
 
 ## Final Review
 
-- [ ] Remove duplicate bar glyphs, render all `N` spans as dots, anchor bar 1 at the first predicted chord (excluding any earlier intro), show every exact candidate with its progression color, blend colors for shared chords, list candidates with a separate lesson link beneath each on hover/focus, and link highlighted chords directly only for unique matches; keep the exported PDF plain and verify the bar format remains consistent.
-- [ ] Fix low-confidence meter ties to fall back to 4/4; verify synthetic 4/4 detection and review an authorized 4/4 recording.
-- [ ] Replace dropdown chord editing with typed beat cells, including empty beats; accept supported chord symbols plus `N`/`.` for no chord; show invalid entries clearly; make **Done editing** apply valid changes immediately, show one undo for all unsaved edits, and scroll to the correction-saving section; omit asterisks from edited chords in both chart and PDF; verify a chord can be moved across a bar boundary and matches/PDF use the updated beat cells.
-- [ ] Add explicit rights-confirmed local saving of corrected audio intervals for owner review; verify default training ignores feedback and the opt-in training command accepts only feedback IDs assigned to the training split.
-- [ ] Final review complete — feedback resolved and learner confirms the prototype is ready to share using only rights-cleared demo audio
+- [x] Remove duplicate bar glyphs, render all `N` spans as dots, anchor bar 1 at the first predicted chord (excluding any earlier intro), show every exact candidate with its progression color, blend colors for shared chords, list candidates with a separate lesson link beneath each on hover/focus, and link highlighted chords directly only for unique matches; keep the exported PDF plain and verify the bar format remains consistent.
+- [x] Fix low-confidence meter ties to fall back to 4/4; verify synthetic 4/4 detection and review an authorized 4/4 recording.
+- [x] Replace dropdown chord editing with typed beat cells, including empty beats; accept supported chord symbols plus `N`/`.` for no chord; show invalid entries clearly; make **Done editing** apply valid changes immediately, show one undo for all unsaved edits, and scroll to the correction-saving section; omit asterisks from edited chords in both chart and PDF; verify a chord can be moved across a bar boundary and matches/PDF use the updated beat cells.
+- [x] Add explicit rights-confirmed local saving of corrected audio intervals for owner review; verify default training ignores feedback and the opt-in training command accepts only feedback IDs assigned to the training split.
+- [x] Final review complete — feedback resolved and learner confirms the prototype is ready to share using only rights-cleared demo audio
 
 ## Code Tour and App Map
 
-- [ ] Learning activity complete — connect the team's learning goal to one product behavior, its implementation, and verification evidence
-- [ ] Optional edit and transfer reflection addressed — offered/declined/already covered/not applicable as appropriate
-- [ ] `devpost/app-map.html` regenerated from finished code, checked, and shown, including a project-grounded practice to reuse
+- [x] Learning activity complete — connect the team's learning goal to one product behavior, its implementation, and verification evidence
+- [x] Optional edit and transfer reflection addressed — offered/declined/already covered/not applicable as appropriate
+- [x] `devpost/app-map.html` regenerated from finished code, checked, and shown, including a project-grounded practice to reuse
 
-Activity and evidence: Not started.
-Route and stops: Not started.
-Edit outcome: Not started.
-Reflection: Not started.
-Activity mode: Not started.
+Activity and evidence: Guided route from progression matching to chart rendering to the shared-candidate UI test; the learner reported all was well. The full suite passed 98 tests, and the running app showed the candidate link with its lesson destination.
+Route and stops: `src/cadence/matching.py` (`ProgressionCandidate`, `match_progression`) → `app.py` (`_render_chart_group`, `_matched_chord_html`) → `tests/test_chart_ui.py` (`test_shared_match_blends_colors_and_links_each_candidate`).
+Edit outcome: Already covered by learner-directed interface revisions and verification during the build; no extra edit was introduced.
+Reflection: Already covered earlier; not repeated.
+Activity mode: Guided route.
 
 ## Revisions
 
@@ -94,3 +94,4 @@ Activity mode: Not started.
 - Final review feedback — the learner asked to remove asterisks from edited chords in both chart and PDF, show an applied-changes notice with one Undo that restores all unsaved edits, and scroll to the correction-saving section after finishing chord edits. Keep already saved local training examples separate from chart Undo.
 - Final review scope revision — the learner wants every exact progression candidate shown in the interactive chart with a distinct progression color, mixed colors on shared chord cells, and a hover list of matching progressions. Keep matches unranked and the exported PDF plain without progression highlights.
 - Final review feedback — place an explicit lesson link beneath every candidate in the chord hover/focus detail, including ambiguous matches; keep direct chord-click navigation only for a unique match.
+- Final review retry — the learner confirmed the candidate-specific lesson links and reported the updated demo and plain PDF look good, with no further chart changes requested.

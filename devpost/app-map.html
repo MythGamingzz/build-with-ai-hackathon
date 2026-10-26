@@ -22,6 +22,7 @@
     h1, h2 { line-height: 1.2; color: #101828; }
     h1 { margin-bottom: .25rem; }
     a { color: #175cd3; }
+    a:focus-visible { outline: 3px solid #175cd3; outline-offset: 2px; }
     code, pre { font-family: Consolas, "Cascadia Code", monospace; }
     code { overflow-wrap: anywhere; }
     .subtle { color: #475467; }
@@ -37,9 +38,7 @@
       margin: 1rem 0 1.5rem;
       padding: .75rem;
     }
-    .route, .pointers {
-      padding-left: 1.35rem;
-    }
+    .route, .pointers { padding-left: 1.35rem; }
     li { margin: .55rem 0; }
     pre {
       background: #101828;
@@ -62,84 +61,86 @@
 <body>
   <header>
     <h1>Cadence — App Map</h1>
-    <p class="subtle">A private, local experiment for comparing estimated sung words and chords with a hand-checked reference.</p>
+    <p class="subtle">A music-theory learning app with a local chord-analysis experiment.</p>
   </header>
 
-  <p class="notice"><strong>Privacy:</strong> recordings, transcript, reference annotations, and generated reports can contain private or copyrighted material. Keep them local and out of public commits. This guide contains no sample recording or transcript.</p>
+  <p class="notice"><strong>Local processing:</strong> song analysis runs on this computer. Use only audio you own or are authorized to analyze; Cadence does not send recordings to a service.</p>
 
   <main>
     <section aria-labelledby="overview">
       <h2 id="overview">How the pieces fit</h2>
-      <p>The command-line entry point checks the recording and optional reference, calls the local transcription and chord estimators, then saves predictions. When a reference is supplied, comparison results are rendered into a separate HTML report; the reference never replaces the predictions.</p>
+      <p>A visitor supplies a local recording and marks song sections. Cadence estimates chord events, finds exact catalog progression candidates within each section, then shows colored candidate links in the interactive chart. The chart PDF uses the same confirmed bar-and-beat data but stays plain, without progression highlights.</p>
       <div class="diagram">
-        <svg viewBox="0 0 880 240" role="img" aria-labelledby="flow-title flow-description" width="100%" height="240">
-          <title id="flow-title">Cadence local analysis flow</title>
-          <desc id="flow-description">A local WAV and optional reference flow through the command line and local estimators, then produce analysis JSON and a separate comparison report.</desc>
+        <svg viewBox="0 0 960 330" role="img" aria-labelledby="flow-title flow-description" width="100%" height="330">
+          <title id="flow-title">Cadence progression analysis flow</title>
+          <desc id="flow-description">Local chord estimates and song sections are matched into progression candidates, which become an interactive chart and a plain PDF. The interactive chart links each candidate to its lesson.</desc>
           <defs>
             <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
               <path d="M0,0 L8,4 L0,8 Z" fill="#475467"></path>
             </marker>
           </defs>
           <g fill="#eef4ff" stroke="#175cd3" stroke-width="2">
-            <rect x="16" y="68" width="160" height="84" rx="12"></rect>
-            <rect x="238" y="68" width="180" height="84" rx="12"></rect>
-            <rect x="480" y="20" width="180" height="84" rx="12"></rect>
-            <rect x="480" y="136" width="180" height="84" rx="12"></rect>
-            <rect x="716" y="68" width="150" height="84" rx="12"></rect>
+            <rect x="20" y="76" width="180" height="82" rx="12"></rect>
+            <rect x="255" y="76" width="175" height="82" rx="12"></rect>
+            <rect x="485" y="76" width="175" height="82" rx="12"></rect>
+            <rect x="715" y="76" width="210" height="82" rx="12"></rect>
+            <rect x="485" y="226" width="175" height="70" rx="12"></rect>
+            <rect x="715" y="226" width="210" height="70" rx="12"></rect>
           </g>
-          <g fill="#172033" font-family="system-ui, sans-serif" font-size="15" text-anchor="middle">
-            <text x="96" y="101"><tspan x="96">Local WAV</tspan><tspan x="96" dy="22">+ optional reference</tspan></text>
-            <text x="328" y="101"><tspan x="328">CLI</tspan><tspan x="328" dy="22">validate and dispatch</tspan></text>
-            <text x="570" y="53"><tspan x="570">Local estimators</tspan><tspan x="570" dy="22">words + chords</tspan></text>
-            <text x="570" y="169"><tspan x="570">Reference compare</tspan><tspan x="570" dy="22">match / mismatch</tspan></text>
-            <text x="791" y="101"><tspan x="791">Local files</tspan><tspan x="791" dy="22">JSON + HTML</tspan></text>
+          <g fill="#172033" font-family="system-ui, sans-serif" font-size="14" text-anchor="middle">
+            <text x="110" y="108"><tspan x="110">Chord estimates</tspan><tspan x="110" dy="21">+ song sections</tspan></text>
+            <text x="342" y="108"><tspan x="342">Section matcher</tspan><tspan x="342" dy="21">match_progression</tspan></text>
+            <text x="572" y="108"><tspan x="572">ChartData</tspan><tspan x="572" dy="21">candidate positions</tspan></text>
+            <text x="820" y="108"><tspan x="820">Interactive chart</tspan><tspan x="820" dy="21">colors + lesson links</tspan></text>
+            <text x="572" y="257"><tspan x="572">Performance chart</tspan><tspan x="572" dy="21">plain PDF</tspan></text>
+            <text x="820" y="257"><tspan x="820">Progression lesson</tspan><tspan x="820" dy="21">one link per candidate</tspan></text>
           </g>
           <g fill="none" stroke="#475467" stroke-width="2" marker-end="url(#arrow)">
-            <path d="M176 110 H230"></path>
-            <path d="M418 88 H472"></path>
-            <path d="M418 132 H472"></path>
-            <path d="M660 62 H708"></path>
-            <path d="M660 178 C690 178 690 130 708 130"></path>
+            <path d="M200 117 H247"></path>
+            <path d="M430 117 H477"></path>
+            <path d="M660 117 H707"></path>
+            <path d="M572 158 V218"></path>
+            <path d="M820 158 V218"></path>
           </g>
         </svg>
       </div>
     </section>
 
     <section aria-labelledby="route">
-      <h2 id="route">Reference route: follow one report run</h2>
-      <p>This route is prepared for a source tour; it is not a record that someone has already completed the tour.</p>
+      <h2 id="route">Reference route: one candidate to its lesson</h2>
+      <p>Follow one matched chord from the data the app retains to the link a visitor sees.</p>
       <ol class="route">
-        <li><a href="../src/cadence/cli.py#L58"><code>src/cadence/cli.py</code> — <code>main</code></a>: accepts the WAV and options, checks the input, then invokes local transcription and chord estimation. With <code>--reference</code>, it loads the annotations before running analysis.</li>
-        <li><a href="../src/cadence/comparison.py#L24"><code>src/cadence/comparison.py</code> — <code>load_reference</code>, <code>compare_annotations</code>, and <code>build_report_html</code></a>: validates reference timing, compares each labeled window with the raw estimate, and renders separate estimate/reference rows.</li>
-        <li><a href="../tests/test_cli.py#L44"><code>tests/test_cli.py</code> — <code>test_keeps_raw_predictions_separate_from_reference_report</code></a>: verifies a mismatch is visible in the report while the saved prediction stays unchanged. <code>tests/test_comparison.py</code> also checks matching/mismatching chord spans.</li>
+        <li><a href="../src/cadence/matching.py"><code>src/cadence/matching.py</code></a> — search for <code>ProgressionCandidate</code> and <code>match_progression</code>. The matcher retains each exact progression, its key, and the event positions that matched.</li>
+        <li><a href="../app.py"><code>app.py</code></a> — follow <code>_render_chart_group</code> to <code>_matched_chord_html</code>. These functions map candidates to chord cells, blend shared colors, and put a separate lesson link beneath every candidate in the hover/focus card.</li>
+        <li><a href="../tests/test_chart_ui.py"><code>tests/test_chart_ui.py</code></a> — find <code>test_shared_match_blends_colors_and_links_each_candidate</code>. It checks the blended highlight and verifies that each candidate has its own lesson link without assigning one lesson to the shared chord.</li>
       </ol>
     </section>
 
     <section aria-labelledby="change">
       <h2 id="change">To change this, start here</h2>
       <ul class="pointers">
-        <li>Change which command options are accepted or how local files are written: <code>src/cadence/cli.py</code>, starting at <code>build_parser</code> and <code>main</code>.</li>
-        <li>Change annotation validation, span matching, or the match threshold: <code>src/cadence/comparison.py</code>, starting at <code>load_reference</code> and <code>compare_annotations</code>.</li>
-        <li>Change report labels or presentation: <code>src/cadence/comparison.py</code>, starting at <code>build_report_html</code>.</li>
-        <li>Change chord feature estimation: <code>src/cadence/chords.py</code>, starting at <code>estimate_chords</code>. Keep the known chord limitations visible in tests and comparisons.</li>
+        <li>Change which progression patterns match: <code>src/cadence/matching.py</code>, starting at <code>match_progression</code>.</li>
+        <li>Change candidate positions or section-grouped chart data: <code>src/cadence/chart_data.py</code>, starting at <code>build_chart_data</code>.</li>
+        <li>Change chart colors, hover details, or lesson links: <code>app.py</code>, starting at <code>_matched_chord_html</code> and <code>_render_chart_group</code>.</li>
+        <li>Change the printed layout while keeping it plain: <code>src/cadence/chart_pdf.py</code>, starting at <code>_MeasureRow</code> and <code>create_chart_pdf</code>. <code>tests/test_chart_pdf.py</code> checks that matched chords are not highlighted.</li>
       </ul>
     </section>
 
     <section aria-labelledby="practice">
       <h2 id="practice">A practice to reuse</h2>
-      <p>Keep an estimate separate from the hand-checked answer. Here, the reference comparison exposes the chord misses without silently correcting model output; <code>tests/test_cli.py</code> verifies that separation. In another project, store an independent expected result and test the observable difference instead of changing generated output to look correct.</p>
+      <p>The requirement was that a shared chord show every exact candidate, with a separate lesson link for each instead of silently choosing one. <code>tests/test_chart_ui.py</code> checks that visible output shape, and the running app confirmed the link opens the matching lesson. On another project, make a user-facing requirement measurable in a test, then try the result in the real interface.</p>
     </section>
 
     <section aria-labelledby="run">
       <h2 id="run">Run it again</h2>
-      <p>From the project folder, run the local command with a recording and your own private reference:</p>
-      <pre><code>.\.venv\Scripts\python.exe analyze.py &lt;recording.wav&gt; --language id --reference &lt;private-reference.json&gt; --output &lt;private-output-folder&gt;</code></pre>
-      <p>The generated JSON and HTML report go to the selected output folder. Do not use real private paths or annotations in a public issue or commit.</p>
+      <p>From the project folder, start the local app:</p>
+      <pre><code>.\.venv\Scripts\python.exe -m streamlit run app.py</code></pre>
+      <p>Open the browser tab Streamlit provides, or navigate to <code>http://localhost:8501</code>. Select only an authorized local audio file for analysis.</p>
     </section>
   </main>
 
   <footer>
-    <p class="subtle">Source snapshot: commit <code>6b4e0bd</code>. This map describes that implementation and may drift as the code changes. Open <code>devpost/app-map.html</code> from the project explorer to revisit it offline.</p>
+    <p class="subtle">Source-code snapshot: commit <code>65601dd</code>. This offline map describes that implementation and may drift as the code changes. Open <code>devpost/app-map.html</code> from the project explorer to revisit it.</p>
   </footer>
 </body>
 </html>
