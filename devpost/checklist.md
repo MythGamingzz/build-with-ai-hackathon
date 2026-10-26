@@ -29,7 +29,7 @@ Build mode: fast
   Learner check: Open the app, choose beginner, check that W–W–H–W–W–W–H comes before the scales, compare the two piano diagrams and C/D scale displays, inspect the separate chord table and circles, and use Back/Next and the final finish action. Confirm the home screen has no redundant skip-to-library action but still offers the library. Then search for I–III–vi, confirm it is in the less-common group, open its lesson, inspect the circle diagram and chord spellings in different keys, and play the example. Tell me what feels clear or confusing.
   Commit: `Build searchable progression learning databank`
 
-- [ ] **3. Analyze a local song and review its estimates**
+- [x] **3. Analyze a local song and review its estimates**
   Becomes usable: A visitor can select an authorized local WAV or MP3, see chord predictions from the saved model alongside uncertain key, tempo, and meter suggestions, correct those details, enter a title and section ranges, and open only a plausible progression lesson match.
   Why now: The model and lesson catalog now exist, so this connects the training experiment to the educational kernel. It also tests local audio decoding and the uncertain metadata path before PDF layout depends on it.
   PRD ref: `prd.md > The Core Journey`; `prd.md > Analyzing a local song`; `prd.md > States and Boundaries`
@@ -52,7 +52,7 @@ Build mode: fast
 ## Hands-on Checkpoints
 
 - [x] Early usable behavior explored — after Slice 2, try the step-by-step tutorial, search/filter, lesson diagrams, all-key chord spellings, and quieter/spaced synthetic audio; report what is clear or confusing while the analysis and chart work can still benefit from feedback.
-- [ ] Core journey explored — after Slice 3, run the trained-model analysis flow, correct estimates, add sections, and report any confusing parts before PDF export is finalized.
+- [x] Core journey explored — after Slice 3, run the trained-model analysis flow, correct estimates, add sections, and report any confusing parts before PDF export is finalized.
 - [ ] Final kick-the-tires exploration and feedback completed — after Slice 4, explore the complete demo, try an awkward search and an uncertain/no-match result, export a chart, and report anything broken or worth changing.
 
 ## Final Review
@@ -80,3 +80,4 @@ Activity mode: Not started.
 - Selected Demo 3 as the whole-song holdout after confirming Demo 5 must remain in training for the augmented labels — any held-out label absent from the four training songs will be reported and counted as an evaluation miss.
 - Corrected Demo 2 bars 1–8 per learner clarification: G is labeled only on beat 1 of bars 1 and 5, with the remaining time labeled `N` (no chord); added a regression test for these intervals.
 - Applied matching temporal smoothing, short-run merging, and low-energy masking to both methods before scoring. After reviewing the low held-out result and training-only cross-validation, the learner chose to continue with the honest experiment rather than require a 75% target; do not claim the trained model outperforms the baseline.
+- Slice 3 hands-on review — the learner liked the analyzer and requested a section-aware bar-format preview, highlighted lesson links for matched progressions, an explicit update action after section edits, and PDF download after preview; carry these refinements into Slice 4.
