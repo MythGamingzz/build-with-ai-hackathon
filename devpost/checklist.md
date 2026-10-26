@@ -39,7 +39,7 @@ Build mode: fast
   Learner check: Analyze an original or otherwise authorized local recording, inspect the uncertainty notices, correct the suggested key/tempo/meter, add a title and section labels, and check that a lesson opens only for a plausible match.
   Commit: `Add local song chord analysis`
 
-- [ ] **4. Export a printable performance chart**
+- [x] **4. Export a printable performance chart**
   Becomes usable: A visitor can update a section-aware bar/beat preview, see unique progression matches highlighted and linked to lessons, then download a readable PDF from that confirmed preview.
   Why now: The PDF depends on stable analysis, corrected metadata, and manually entered sections. Building it last avoids polishing a chart before its inputs and bar/beat alignment are verified.
   PRD ref: `prd.md > The Core Journey`; `prd.md > Exporting a performance chart`; `prd.md > States and Boundaries`
